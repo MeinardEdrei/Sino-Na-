@@ -17,6 +17,34 @@ const rooms = {};
 /** @type {Record<string, { code: string, drinkerIndex: number, role: 'host' | 'player' }>} */
 const socketMeta = {};
 
+function getPlayerIndex(socketId, room) {
+  return room.players[socketId]?.drinkerIndex ?? -1;
+}
+
+function isTanggeroSocket(socketId, room) {
+  const idx = getPlayerIndex(socketId, room);
+  return idx >= 0 && idx === room.tanggeroIndex;
+}
+
+function canManageRoom(socketId, room) {
+  return room.creatorId === socketId;
+}
+
+function announce(code, message) {
+  io.to(code).emit('room:announce', { message });
+}
+
+function pickFallbackTanggero(room, excludeIndex = -1) {
+  const creator = room.players[room.creatorId];
+  if (creator && creator.drinkerIndex !== excludeIndex) {
+    return creator.drinkerIndex;
+  }
+  for (const p of Object.values(room.players)) {
+    if (p.drinkerIndex !== excludeIndex) return p.drinkerIndex;
+  }
+  return 0;
+}
+
 function generateRoomCode() {
   let code;
   let attempts = 0;
@@ -54,6 +82,7 @@ function roomSnapshot(room) {
     celebrating: room.celebrating,
     drinkCounts: [...room.drinkCounts],
     skipCounts: [...room.skipCounts],
+    tanggeroIndex: room.tanggeroIndex,
     playerSlots: Object.fromEntries(
       Object.entries(room.players).map(([sid, p]) => [sid, p.drinkerIndex])
     ),
@@ -129,12 +158,13 @@ function canMarkShot(socketId, room) {
   if (room.status !== 'tracker' || room.celebrating) return false;
   const player = room.players[socketId];
   if (!player) return false;
+  if (isTanggeroSocket(socketId, room)) return true;
   return player.drinkerIndex === room.currentIndex;
 }
 
 function canSkip(socketId, room) {
   if (room.status !== 'tracker' || room.celebrating) return false;
-  if (room.hostId === socketId) return true;
+  if (isTanggeroSocket(socketId, room)) return true;
   const player = room.players[socketId];
   return player && player.drinkerIndex === room.currentIndex;
 }
@@ -156,7 +186,7 @@ function attachSocketToRoom(socket, code, meta) {
   };
 
   if (meta.role === 'host') {
-    room.hostId = socket.id;
+    room.creatorId = socket.id;
     if (meta.drinkerIndex >= 0) {
       for (const [sid, p] of Object.entries(room.players)) {
         if (sid !== socket.id && p.drinkerIndex === meta.drinkerIndex) {
@@ -246,7 +276,8 @@ io.on('connection', (socket) => {
     const code = generateRoomCode();
     const room = {
       code,
-      hostId: socket.id,
+      creatorId: socket.id,
+      tanggeroIndex: 0,
       drinkers,
       status: 'tracker',
       round: 1,
@@ -413,8 +444,8 @@ io.on('connection', (socket) => {
       return;
     }
     const room = rooms[meta.code];
-    if (!room || room.hostId !== socket.id) {
-      ack?.({ ok: false, error: 'Host lang ang pwedeng mag-edit.' });
+    if (!room || !canManageRoom(socket.id, room)) {
+      ack?.({ ok: false, error: 'Creator lang ang pwedeng mag-edit.' });
       return;
     }
     if (room.status !== 'tracker' || room.celebrating) {
@@ -446,8 +477,8 @@ io.on('connection', (socket) => {
       return;
     }
     const room = rooms[meta.code];
-    if (!room || room.hostId !== socket.id) {
-      ack?.({ ok: false, error: 'Host lang ang pwedeng mag-edit.' });
+    if (!room || !canManageRoom(socket.id, room)) {
+      ack?.({ ok: false, error: 'Creator lang ang pwedeng mag-edit.' });
       return;
     }
     if (room.status !== 'tracker' || room.celebrating) {
@@ -465,7 +496,11 @@ io.on('connection', (socket) => {
       return;
     }
     if (index === 0) {
-      ack?.({ ok: false, error: 'Hindi pwedeng alisin ang host.' });
+      ack?.({ ok: false, error: 'Hindi pwedeng alisin ang tagapag-setup.' });
+      return;
+    }
+    if (index === room.tanggeroIndex) {
+      ack?.({ ok: false, error: 'Hindi pwedeng alisin ang tanggero. Ilipat muna ang role.' });
       return;
     }
     if (room.drinkers.length <= 2) {
@@ -507,12 +542,52 @@ io.on('connection', (socket) => {
       }
     }
 
-    const hostMeta = socketMeta[room.hostId];
-    if (hostMeta) {
-      hostMeta.drinkerIndex = remap(hostMeta.drinkerIndex);
-      if (hostMeta.drinkerIndex < 0) hostMeta.drinkerIndex = 0;
+    const creatorMeta = socketMeta[room.creatorId];
+    if (creatorMeta) {
+      creatorMeta.drinkerIndex = remap(creatorMeta.drinkerIndex);
+      if (creatorMeta.drinkerIndex < 0) creatorMeta.drinkerIndex = 0;
     }
 
+    if (room.tanggeroIndex === index) {
+      room.tanggeroIndex = pickFallbackTanggero(room);
+    } else {
+      room.tanggeroIndex = remap(room.tanggeroIndex);
+      if (room.tanggeroIndex < 0) room.tanggeroIndex = 0;
+    }
+
+    ack?.({ ok: true });
+    broadcastRoom(meta.code);
+  });
+
+  socket.on('tanggero:transfer', (payload, ack) => {
+    const meta = socketMeta[socket.id];
+    if (!meta) {
+      ack?.({ ok: false, error: 'Walang room.' });
+      return;
+    }
+    const room = rooms[meta.code];
+    if (!room) {
+      ack?.({ ok: false, error: 'Walang room.' });
+      return;
+    }
+    if (!isTanggeroSocket(socket.id, room) && !canManageRoom(socket.id, room)) {
+      ack?.({ ok: false, error: 'Tanggero lang ang pwedeng maglipat.' });
+      return;
+    }
+
+    const targetIndex = Number(payload?.targetIndex);
+    if (
+      !Number.isInteger(targetIndex) ||
+      targetIndex < 0 ||
+      targetIndex >= room.drinkers.length
+    ) {
+      ack?.({ ok: false, error: 'Pumili ng kasama sa bilog.' });
+      return;
+    }
+
+    room.tanggeroIndex = targetIndex;
+    const name = room.drinkers[targetIndex];
+    announce(meta.code, `Si ${name} ang tanggero na 🍺`);
     ack?.({ ok: true });
     broadcastRoom(meta.code);
   });
@@ -529,7 +604,7 @@ io.on('connection', (socket) => {
       return;
     }
     if (!canMarkShot(socket.id, room)) {
-      ack?.({ ok: false, error: 'Hindi pa ikaw ang turno.' });
+      ack?.({ ok: false, error: 'Hindi mo pwedeng i-mark ngayon.' });
       return;
     }
 
@@ -590,8 +665,8 @@ io.on('connection', (socket) => {
       return;
     }
     const room = rooms[meta.code];
-    if (!room || room.hostId !== socket.id) {
-      ack?.({ ok: false, error: 'Host lang ang pwedeng mag-end.' });
+    if (!room || !canManageRoom(socket.id, room)) {
+      ack?.({ ok: false, error: 'Creator lang ang pwedeng mag-end.' });
       return;
     }
 
@@ -606,6 +681,36 @@ io.on('connection', (socket) => {
     }, 60000);
   });
 
+  function handlePlayerExit(socket, room, meta) {
+    const player = room.players[socket.id];
+    if (player) {
+      const name = room.drinkers[player.drinkerIndex] || 'May umalis';
+      announce(meta.code, `Si ${name} umalis sa room`);
+
+      if (player.drinkerIndex === room.tanggeroIndex) {
+        room.tanggeroIndex = pickFallbackTanggero(room, player.drinkerIndex);
+        const nextName = room.drinkers[room.tanggeroIndex];
+        announce(meta.code, `Si ${nextName} ang tanggero na 🍺`);
+      }
+    }
+
+    delete room.players[socket.id];
+    socket.leave(meta.code);
+    delete socketMeta[socket.id];
+    broadcastRoom(meta.code);
+  }
+
+  socket.on('room:leave', (_payload, ack) => {
+    const meta = socketMeta[socket.id];
+    if (!meta) {
+      ack?.({ ok: true });
+      return;
+    }
+    const room = rooms[meta.code];
+    if (room) handlePlayerExit(socket, room, meta);
+    ack?.({ ok: true });
+  });
+
   socket.on('disconnect', () => {
     const meta = socketMeta[socket.id];
     if (!meta) return;
@@ -616,9 +721,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    delete room.players[socket.id];
-    delete socketMeta[socket.id];
-    broadcastRoom(meta.code);
+    handlePlayerExit(socket, room, meta);
   });
 });
 

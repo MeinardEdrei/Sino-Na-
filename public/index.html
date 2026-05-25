@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Sino Na? 🍺</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#f4bc3d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
@@ -599,6 +604,10 @@
       box-shadow: 0 0 0 2px rgba(244, 188, 61, 0.35);
     }
 
+    .bubble-slot.tanggero-slot:not(.active) .bubble {
+      border-color: rgba(94, 233, 160, 0.35);
+    }
+
     .center-zone {
       position: absolute;
       left: 50%;
@@ -840,6 +849,83 @@
       border: 1px solid rgba(94, 233, 160, 0.2);
     }
 
+    .announce-bar {
+      position: fixed;
+      bottom: calc(var(--safe-bottom) + var(--space-md));
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      z-index: 250;
+      width: min(420px, calc(100vw - 2rem));
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-card);
+      font-size: 0.92rem;
+      font-weight: 600;
+      text-align: center;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+
+    .announce-bar.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .notif-card {
+      padding: var(--space-md);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .notif-card p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .tanggero-panel {
+      padding: var(--space-md);
+      margin-top: var(--space-sm);
+    }
+
+    .tanggero-panel label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: var(--space-xs);
+    }
+
+    .tanggero-select {
+      width: 100%;
+      min-height: var(--tap);
+      padding: 0 var(--space-md);
+      font-family: inherit;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      color: var(--text);
+    }
+
+    .btn-tanggero-mark {
+      background: linear-gradient(145deg, #5ee9a0 0%, #2eb87a 100%);
+      color: #062a18;
+      box-shadow: 0 6px 24px rgba(94, 233, 160, 0.35);
+    }
+
+    .role-badge.tanggero {
+      background: rgba(94, 233, 160, 0.12);
+      color: var(--success);
+      border-color: rgba(94, 233, 160, 0.3);
+    }
+
     .form-stack {
       display: flex;
       flex-direction: column;
@@ -975,6 +1061,7 @@
     <div class="bg-dots"></div>
   </div>
   <div id="toast-ikaw" class="toast-ikaw" aria-live="assertive">IKAW NA! 🥃</div>
+  <div id="announce-bar" class="announce-bar" aria-live="polite"></div>
   <div id="app"></div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -1007,8 +1094,11 @@
       peekTaken: [],
       status: null,
       showScoreboard: false,
+      tanggeroIndex: 0,
       lastTurnIndex: -1,
       toastTimer: null,
+      announceTimer: null,
+      notifReady: false,
     };
 
     const socket = io({ reconnection: true, reconnectionAttempts: Infinity });
@@ -1046,6 +1136,79 @@
       state.toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
     }
 
+    function showAnnouncement(message) {
+      const el = document.getElementById('announce-bar');
+      if (!el || !message) return;
+      el.textContent = message;
+      el.classList.add('show');
+      clearTimeout(state.announceTimer);
+      state.announceTimer = setTimeout(() => el.classList.remove('show'), 4200);
+    }
+
+    function isTanggero() {
+      return state.drinkerIndex >= 0 && state.drinkerIndex === state.tanggeroIndex;
+    }
+
+    function isCreator() {
+      return state.role === 'host';
+    }
+
+    function tanggeroName() {
+      return state.drinkers[state.tanggeroIndex] || '';
+    }
+
+    async function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+        state.notifReady = true;
+      } catch {
+        state.notifReady = false;
+      }
+    }
+
+    async function requestNotifications() {
+      if (!('Notification' in window)) return false;
+      const perm = await Notification.requestPermission();
+      return perm === 'granted';
+    }
+
+    async function notifyMyTurn() {
+      if (Notification.permission !== 'granted' || !isMyTurn()) return;
+      const reg = await navigator.serviceWorker?.ready;
+      if (!reg?.active) return;
+      reg.active.postMessage({
+        type: 'show-turn-notif',
+        title: 'Ikaw na! 🥃',
+        body: 'Ininom mo na o Skip muna — pwede sa lock screen (Android)',
+      });
+    }
+
+    function handleNotifAction(action) {
+      if (state.screen !== 'tracker' || state.celebrating) return;
+      if (action === 'drink' && (isMyTurn() || isTanggero())) {
+        socket.emit('shot:mark', {}, () => {});
+      } else if (action === 'skip' && canSkip()) {
+        socket.emit('shot:skip', {}, () => {});
+      }
+    }
+
+    function processUrlAction() {
+      const action = new URLSearchParams(location.search).get('action');
+      if (action === 'drink' || action === 'skip') {
+        handleNotifAction(action);
+        history.replaceState({}, '', location.pathname);
+      }
+    }
+
+    registerServiceWorker();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'notif-action') handleNotifAction(e.data.action);
+      });
+    }
+    processUrlAction();
+
     function maybeShowTurnToast(prevIndex) {
       const myIdx = state.drinkerIndex;
       if (myIdx < 0 || state.celebrating) return;
@@ -1071,10 +1234,12 @@
       state.drinkCounts = s.drinkCounts || [];
       state.skipCounts = s.skipCounts || [];
       state.celebrating = s.celebrating;
+      state.tanggeroIndex = s.tanggeroIndex ?? 0;
       state.playerSlots = s.playerSlots || {};
       if (s.status === 'tracker') {
         state.screen = 'tracker';
         maybeShowTurnToast(prev);
+        if (isMyTurn()) notifyMyTurn();
       }
       if (s.status === 'ended') state.screen = 'ended';
       state.lastTurnIndex = state.currentIndex;
@@ -1114,8 +1279,12 @@
 
     function canSkip() {
       if (state.celebrating) return false;
-      if (state.role === 'host') return true;
+      if (isTanggero()) return true;
       return isMyTurn();
+    }
+
+    function canTanggeroMark() {
+      return isTanggero() && !state.celebrating && !isMyTurn();
     }
 
     function currentDrinkerName() {
@@ -1145,7 +1314,7 @@
           ? '<p class="error-msg">May naka-claim na sa pangalang ito.</p>'
           : `<p class="match-hint">✓ Nahanap: ${escapeHtml(state.peekDrinkers[matchIdx])}</p>`;
       }
-      return '<p class="error-msg">Wala ang pangalan mo sa listahan ng host.</p>';
+      return '<p class="error-msg">Wala ang pangalan mo sa listahan.</p>';
     }
 
     function updateJoinMatchArea() {
@@ -1223,6 +1392,10 @@
       render();
     });
 
+    socket.on('room:announce', (payload) => {
+      showAnnouncement(payload?.message || '');
+    });
+
     function renderHome() {
       return `
         <div class="screen">
@@ -1236,7 +1409,7 @@
               ${state.connected ? 'Handa na ang server' : 'Kumokonekta...'}
             </p>
             <div class="home-actions">
-              <button type="button" class="btn btn-accent" id="btn-host">Gumawa ng inuman</button>
+              <button type="button" class="btn btn-accent" id="btn-host">Gumawa ng inuman (Tanggero)</button>
               <button type="button" class="btn btn-ghost" id="btn-join-nav">Sumali sa room code</button>
             </div>
             ${state.joinError ? `<p class="error-msg" style="margin-top:var(--space-md)">${escapeHtml(state.joinError)}</p>` : ''}
@@ -1264,12 +1437,12 @@
           <div class="screen-body">
             <header class="setup-header">
               <h1>I-setup ang inuman</h1>
-              <p>Ikaw ang host — idagdag ang mga kasama</p>
+              <p>Ikaw ang unang tanggero — idagdag ang mga kasama</p>
             </header>
             <div class="form-stack">
               <div class="form-group card" style="padding:var(--space-md)">
                 <p class="field-label">Pangalan mo?</p>
-                <input type="text" class="text-input" id="host-name-input" placeholder="Ikaw (host)..."
+                <input type="text" class="text-input" id="host-name-input" placeholder="Ikaw (tanggero)..."
                   value="${escapeHtml(state.hostName)}" maxlength="32" autocomplete="name" />
               </div>
               <div class="form-group card" style="padding:var(--space-md)">
@@ -1307,7 +1480,7 @@
           <div class="screen-body">
             <header class="screen-header">
               <h1>Sumali sa inuman</h1>
-              <p>Room code at pangalan — dapat nasa listahan ng host</p>
+              <p>Room code at pangalan — dapat nasa listahan ng tanggero</p>
             </header>
             <div class="form-stack">
               <div class="form-group card" style="padding:var(--space-md)">
@@ -1318,7 +1491,7 @@
               </div>
               <div class="form-group card" style="padding:var(--space-md)">
                 <p class="field-label">Pangalan mo?</p>
-                <input type="text" class="text-input" id="join-name" placeholder="Tulad ng binigay ng host..."
+                <input type="text" class="text-input" id="join-name" placeholder="Tulad ng binigay ng tanggero..."
                   value="${escapeHtml(state.joinPlayerName)}" maxlength="32" autocomplete="name" />
                 <div id="join-match-area">${joinMatchHtml()}</div>
               </div>
@@ -1383,12 +1556,14 @@
           const isDone = state.drunkThisRound.includes(i);
           const isSkipped = state.skippedThisRound.includes(i);
           const isYou = state.drinkerIndex === i;
+          const isTanggeroSlot = i === state.tanggeroIndex;
           const skips = state.skipCounts[i] || 0;
 
           let icon = '';
           if (isActive) icon = '🥃';
           else if (isDone) icon = '✓';
           else if (isSkipped) icon = '⏭️';
+          else if (isTanggeroSlot) icon = '🍺';
 
           const classes = [
             'bubble-slot',
@@ -1396,6 +1571,7 @@
             isDone ? 'done' : '',
             isSkipped && !isDone ? 'skipped-round' : '',
             isYou ? 'you' : '',
+            isTanggeroSlot ? 'tanggero-slot' : '',
           ]
             .filter(Boolean)
             .join(' ');
@@ -1420,25 +1596,57 @@
       if (isMyTurn()) {
         centerActions = `
           <button type="button" class="btn btn-shot" id="btn-shot">Ininom ko na! 🥃</button>
-          <button type="button" class="btn btn-skip" id="btn-skip">Preskong muna ⏭️</button>`;
-      } else if (state.role === 'host' && canSkip()) {
+          <button type="button" class="btn btn-skip" id="btn-skip">Skip muna</button>`;
+      } else if (canTanggeroMark()) {
         centerActions = `
-          <div class="center-wait">
-            Turno ni <strong>${escapeHtml(currentDrinkerName())}</strong>
-          </div>
-          <button type="button" class="btn btn-skip" id="btn-skip">Preskong muna ⏭️</button>`;
+          <button type="button" class="btn btn-tanggero-mark" id="btn-tanggero-mark">
+            Nainom na si ${escapeHtml(currentDrinkerName())} ✓
+          </button>
+          <button type="button" class="btn btn-skip" id="btn-skip">Skip muna</button>`;
+      } else if (isTanggero() && canSkip()) {
+        centerActions = `
+          <button type="button" class="btn btn-skip" id="btn-skip">Skip muna</button>`;
       } else {
         const msg = state.celebrating
           ? 'Next round na...'
-          : `Hintay — si ${escapeHtml(currentDrinkerName())}`;
+          : `Tagal uminom ni ${escapeHtml(currentDrinkerName())}`;
         centerActions = `<div class="center-wait">${escapeHtml(msg)}</div>`;
       }
 
+      const tanggeroTransfer =
+        isTanggero() || isCreator()
+          ? `
+        <div class="tanggero-panel card">
+          <label for="tanggero-transfer">Ilipat ang tanggero role</label>
+          <select id="tanggero-transfer" class="tanggero-select">
+            <option value="">— Pumili ng kasama —</option>
+            ${state.drinkers
+              .map(
+                (name, i) =>
+                  `<option value="${i}" ${i === state.tanggeroIndex ? 'selected disabled' : ''}>${escapeHtml(name)}${i === state.tanggeroIndex ? ' (tanggero ngayon)' : ''}</option>`
+              )
+              .join('')}
+          </select>
+          <button type="button" class="btn btn-ghost" id="btn-transfer" style="margin-top:var(--space-sm)">Ilipat ang tanggero</button>
+        </div>`
+          : '';
+
+      const notifPerm = typeof Notification !== 'undefined' ? Notification.permission : 'denied';
+      const notifCard = `
+        <div class="notif-card card">
+          ${
+            notifPerm === 'granted'
+              ? '<p>✓ Notifications on — "Ininom ko na" at "Skip muna" sa lock screen (Android) o notification shade.</p>'
+              : `<p><strong>Lock screen</strong> — I-on ang notifications para ma-tap ang inom/skip kahit naka-lock (works best sa Android Chrome).</p>
+                 <button type="button" class="btn btn-ghost" id="btn-enable-notif">I-on ang notifications</button>`
+          }
+        </div>`;
+
       const hostEdit =
-        state.role === 'host'
+        isCreator()
           ? `
         <section class="host-edit card">
-          <p class="host-edit-title">Host: dagdag o alis ng kasama (hindi ikaw)</p>
+          <p class="host-edit-title">Creator: dagdag o alis ng kasama (hindi ang sarili mo)</p>
           <div class="add-row">
             <input type="text" id="host-add-input" placeholder="Magdagdag..." maxlength="32" />
             <button type="button" class="btn btn-accent btn-inline" id="btn-host-add">Add</button>
@@ -1447,7 +1655,7 @@
             ${state.drinkers
               .map((name, i) => {
                 if (i === 0) {
-                  return `<span class="chip host-chip">${escapeHtml(name)} (ikaw)</span>`;
+                  return `<span class="chip host-chip">${escapeHtml(name)} (ikaw${i === state.tanggeroIndex ? ' · tanggero' : ''})</span>`;
                 }
                 return `
               <span class="chip" data-index="${i}">
@@ -1478,7 +1686,12 @@
                 <div class="room-code-banner card">
                   <div class="label">Room code — i-share</div>
                   <div class="code">${escapeHtml(state.code || '')}</div>
-                  ${state.role === 'host' ? '<span class="role-badge">Host · nasa bilog</span>' : '<span class="role-badge">Player</span>'}
+                  ${
+                    isTanggero()
+                      ? '<span class="role-badge tanggero">🍺 Tanggero</span>'
+                      : '<span class="role-badge">Kasama sa bilog</span>'
+                  }
+                  ${isCreator() && !isTanggero() ? '<span class="role-badge" style="margin-left:0.35rem">Creator</span>' : ''}
                 </div>
                 <p class="status-pill ${state.connected ? '' : 'offline'}">
                   ${state.connected ? 'Live sync' : 'Nagre-reconnect...'}
@@ -1486,9 +1699,14 @@
                 <p class="round-bar-promo card">
                   🍺 <span class="hl">Round ${state.round}</span> · ${done}/${total} nakainom na
                 </p>
+                <p style="font-size:0.8rem;color:var(--text-muted);text-align:center">
+                  Tanggero: <strong style="color:var(--success)">${escapeHtml(tanggeroName())}</strong>
+                </p>
                 <div class="tracker-toolbar">
                   <button type="button" class="btn btn-ghost" id="btn-scoreboard">📊 Scoreboard</button>
                 </div>
+                ${notifCard}
+                ${tanggeroTransfer}
               </aside>
               <main class="tracker-main">
                 <div class="circle-wrap">
@@ -1502,7 +1720,7 @@
               ${hostEdit}
               <div class="tracker-footer-zone screen-footer" style="padding-top:0">
                 ${
-                  state.role === 'host'
+                  isCreator()
                     ? `<button type="button" class="btn btn-danger" id="btn-end">Tapusin ang inuman</button>
                        <button type="button" class="btn btn-ghost" id="btn-leave-host">Umalis</button>`
                     : `<button type="button" class="btn btn-ghost" id="btn-leave-player">Umalis sa room</button>`
@@ -1676,8 +1894,31 @@
         socket.emit('shot:mark', {}, () => {});
       });
 
+      $('#btn-tanggero-mark')?.addEventListener('click', () => {
+        socket.emit('shot:mark', {}, () => {});
+      });
+
       $('#btn-skip')?.addEventListener('click', () => {
         socket.emit('shot:skip', {}, () => {});
+      });
+
+      $('#btn-enable-notif')?.addEventListener('click', async () => {
+        const ok = await requestNotifications();
+        if (ok) showAnnouncement('Notifications on — subukan kapag ikaw na ang turno');
+        else showAnnouncement('Hindi ma-on ang notifications sa browser na ito');
+        render();
+      });
+
+      $('#btn-transfer')?.addEventListener('click', () => {
+        const sel = document.getElementById('tanggero-transfer');
+        const targetIndex = Number(sel?.value);
+        if (!Number.isInteger(targetIndex) || targetIndex < 0) return;
+        socket.emit('tanggero:transfer', { targetIndex }, (res) => {
+          if (!res?.ok) {
+            showAnnouncement(res?.error || 'Hindi nailipat');
+          }
+          render();
+        });
       });
 
       $('#btn-scoreboard')?.addEventListener('click', () => {
@@ -1707,14 +1948,14 @@
       });
 
       $('#btn-leave-host')?.addEventListener('click', () => {
-        if (confirm('Tapusin ang session para sa lahat?')) {
-          socket.emit('session:end', {}, goHome);
+        if (confirm('Umalis ka lang (hindi tatapusin ang session)?')) {
+          leaveRoomAndGoHome();
         }
       });
 
-      $('#btn-leave-player')?.addEventListener('click', goHome);
+      $('#btn-leave-player')?.addEventListener('click', leaveRoomAndGoHome);
 
-      if (state.role === 'host') {
+      if (isCreator()) {
         const hostInput = $('#host-add-input');
         $('#btn-host-add')?.addEventListener('click', () => {
           socket.emit('drinkers:add', { name: hostInput?.value }, (res) => {
@@ -1743,6 +1984,14 @@
 
     function bindEnded() {
       $('#btn-home-ended')?.addEventListener('click', goHome);
+    }
+
+    function leaveRoomAndGoHome() {
+      if (state.code && socket.connected) {
+        socket.emit('room:leave', {}, () => goHome());
+        return;
+      }
+      goHome();
     }
 
     function goHome() {

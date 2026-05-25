@@ -1,0 +1,18 @@
+{
+  "name": "Sino Na?",
+  "short_name": "Sino Na",
+  "description": "Real-time Filipino inuman shot tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060912",
+  "theme_color": "#f4bc3d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
