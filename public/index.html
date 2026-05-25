@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Sino Na? 🍺</title>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --bg-card: #12182a;
+      --accent: #f5b942;
+      --accent-glow: rgba(245, 185, 66, 0.55);
+      --accent-dim: #c4922e;
+      --warm: #e85d4a;
+      --text: #f0f2f8;
+      --text-muted: #8b95ad;
+      --border: #2a3550;
+      --success: #4ade80;
+      --radius: 14px;
+      --tap: 56px;
+      --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { height: 100%; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      min-height: 100dvh;
+      font-family: var(--font);
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 185, 66, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(232, 93, 74, 0.08), transparent);
+      color: var(--text);
+      line-height: 1.4;
+      overflow-x: hidden;
+    }
+
+    #app {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: max(1rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .setup-header, .screen-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      padding-top: 0.5rem;
+    }
+
+    .setup-header h1, .screen-header h1 {
+      font-size: clamp(2rem, 8vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      text-shadow: 0 0 40px var(--accent-glow);
+    }
+
+    .setup-header p, .screen-header p {
+      margin-top: 0.5rem;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .room-code-banner {
+      text-align: center;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: var(--bg-card);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+
+    .room-code-banner .label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
+    }
+
+    .room-code-banner .code {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+    }
+
+    .room-code-banner .hint {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .role-badge {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.25rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 999px;
+      background: rgba(245, 185, 66, 0.15);
+      color: var(--accent);
+    }
+
+    .conn-status {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .conn-status.offline { color: var(--warm); }
+
+    .add-row {
+      display: flex;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .add-row input, .code-input {
+      flex: 1;
+      min-height: var(--tap);
+      padding: 0 1rem;
+      font-size: 1.05rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .code-input {
+      text-align: center;
+      letter-spacing: 0.35em;
+      font-weight: 800;
+      text-transform: uppercase;
+      width: 100%;
+    }
+
+    .add-row input:focus, .code-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--tap);
+      padding: 0 1.25rem;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: transform 0.15s, background 0.2s, opacity 0.2s, box-shadow 0.2s;
+      user-select: none;
+      width: 100%;
+    }
+
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-accent {
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dim) 100%);
+      color: #1a1208;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 2px solid var(--border);
+      margin-top: 0.65rem;
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--warm);
+      border: 2px solid var(--warm);
+      margin-top: 0.65rem;
+    }
+
+    .btn-shot {
+      width: min(220px, 70vw);
+      height: min(220px, 70vw);
+      min-height: 160px;
+      border-radius: 50%;
+      font-size: clamp(1rem, 4vw, 1.2rem);
+      background: linear-gradient(145deg, var(--warm) 0%, #c43d2e 100%);
+      color: #fff;
+      box-shadow: 0 0 0 4px rgba(232, 93, 74, 0.25), 0 8px 32px rgba(232, 93, 74, 0.45);
+      line-height: 1.25;
+      padding: 1rem;
+      width: min(220px, 70vw);
+    }
+
+    .btn-shot.waiting {
+      background: var(--bg-card);
+      color: var(--text-muted);
+      box-shadow: none;
+      border: 2px solid var(--border);
+      font-size: 0.95rem;
+    }
+
+    .error-msg {
+      color: var(--warm);
+      font-size: 0.9rem;
+      min-height: 1.35rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      min-height: 3rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.65rem 0.5rem 0.9rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.95rem;
+      animation: chipIn 0.25s ease;
+    }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .chip-remove {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .setup-footer, .tracker-footer, .home-actions {
+      margin-top: auto;
+      padding-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .home-actions .btn { font-size: 1.1rem; }
+
+    .picker-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .picker-item {
+      min-height: var(--tap);
+      padding: 0 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .picker-item:hover { border-color: var(--accent); }
+    .picker-item.selected {
+      border-color: var(--accent);
+      background: rgba(245, 185, 66, 0.12);
+      color: var(--accent);
+    }
+
+    .picker-item.taken {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .picker-item .taken-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .tracker-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .round-bar {
+      width: 100%;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .round-bar strong { color: var(--accent); }
+
+    .turn-hint {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      min-height: 1.25rem;
+    }
+
+    .circle-stage {
+      position: relative;
+      width: min(340px, 92vw);
+      aspect-ratio: 1;
+      flex-shrink: 0;
+      margin: 0.5rem 0 1rem;
+    }
+
+    .circle-ring {
+      position: absolute;
+      inset: 0;
+      border: 1px dashed var(--border);
+      border-radius: 50%;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .drinker-slot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 0;
+      height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .drinker-name {
+      position: absolute;
+      white-space: nowrap;
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 0.35rem 0.6rem;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      transition: color 0.35s ease, font-size 0.35s ease, font-weight 0.35s ease,
+        border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease, background 0.35s ease;
+    }
+
+    .drinker-slot.active .drinker-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--accent);
+      background: rgba(245, 185, 66, 0.12);
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow), 0 0 40px rgba(245, 185, 66, 0.2);
+      transform: scale(1.08);
+    }
+
+    .drinker-slot.done .drinker-name {
+      color: var(--success);
+      opacity: 0.75;
+      text-decoration: line-through;
+      text-decoration-color: rgba(74, 222, 128, 0.5);
+    }
+
+    .drinker-slot.done.active .drinker-name {
+      text-decoration: none;
+      opacity: 1;
+    }
+
+    .drinker-slot.you .drinker-name {
+      outline: 1px dashed rgba(245, 185, 66, 0.4);
+    }
+
+    .center-zone {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .celebration {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 14, 26, 0.88);
+      z-index: 100;
+      padding: 1.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .celebration-box, .ended-box {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      background: var(--bg-card);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      box-shadow: 0 0 60px var(--accent-glow);
+      max-width: 320px;
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .celebration-box h2, .ended-box h2 {
+      font-size: 1.35rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .ended-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .ended-box { border-color: var(--border); box-shadow: none; }
+    .ended-box h2 { font-size: 1.75rem; }
+
+    .host-edit {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .host-edit .add-row { margin-bottom: 0.75rem; }
+    .host-edit .chip-list { margin-bottom: 0; min-height: auto; }
+
+    .empty-hint {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const STORAGE_KEY = 'sinoNa_session';
+
+    const state = {
+      screen: 'home',
+      connected: false,
+      role: null,
+      code: null,
+      drinkerIndex: -1,
+      drinkers: [],
+      round: 1,
+      currentIndex: 0,
+      drunkThisRound: [],
+      celebrating: false,
+      playerSlots: {},
+      setupError: '',
+      joinError: '',
+      joinCode: '',
+      joinSelected: -1,
+      peekDrinkers: [],
+      peekTaken: [],
+      status: null,
+    };
+
+    const socket = io({ reconnection: true, reconnectionAttempts: Infinity });
+
+    const $ = (sel, root = document) => root.querySelector(sel);
+
+    function saveSession() {
+      if (!state.code || !state.role) return;
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          code: state.code,
+          role: state.role,
+          drinkerIndex: state.drinkerIndex,
+        })
+      );
+    }
+
+    function clearSession() {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    function loadSession() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      } catch {
+        return null;
+      }
+    }
+
+    function applyServerState(s) {
+      state.code = s.code;
+      state.drinkers = s.drinkers || [];
+      state.status = s.status;
+      state.round = s.round;
+      state.currentIndex = s.currentIndex;
+      state.drunkThisRound = s.drunkThisRound || [];
+      state.celebrating = s.celebrating;
+      state.playerSlots = s.playerSlots || {};
+      if (s.status === 'tracker') state.screen = 'tracker';
+      if (s.status === 'ended') state.screen = 'ended';
+      render();
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function normalizeName(name) {
+      return name.trim().replace(/\s+/g, ' ');
+    }
+
+    function isDuplicateLocal(name) {
+      const n = normalizeName(name).toLowerCase();
+      return state.drinkers.some((d) => d.toLowerCase() === n);
+    }
+
+    function takenIndices() {
+      if (state.screen === 'join' && state.peekTaken.length) {
+        return new Set(state.peekTaken);
+      }
+      return new Set(Object.values(state.playerSlots));
+    }
+
+    function isMyTurn() {
+      return (
+        state.role === 'player' &&
+        state.drinkerIndex === state.currentIndex &&
+        !state.celebrating
+      );
+    }
+
+    function currentDrinkerName() {
+      return state.drinkers[state.currentIndex] || '';
+    }
+
+    socket.on('connect', () => {
+      state.connected = true;
+      const saved = loadSession();
+      if (saved?.code) {
+        socket.emit('room:rejoin', saved, (res) => {
+          if (res?.ok) {
+            state.role = res.role;
+            state.drinkerIndex = res.drinkerIndex;
+            applyServerState(res.state);
+            saveSession();
+          } else {
+            clearSession();
+            render();
+          }
+        });
+      } else {
+        render();
+      }
+    });
+
+    socket.on('disconnect', () => {
+      state.connected = false;
+      render();
+    });
+
+    socket.on('room:state', (s) => {
+      applyServerState(s);
+    });
+
+    socket.on('session:ended', () => {
+      state.screen = 'ended';
+      state.status = 'ended';
+      clearSession();
+      render();
+    });
+
+    socket.on('room:kicked', (payload) => {
+      clearSession();
+      state.screen = 'home';
+      state.role = null;
+      state.code = null;
+      state.joinError = payload?.reason || 'Naalis ka sa grupo.';
+      render();
+    });
+
+    function renderHome() {
+      return `
+        <header class="setup-header">
+          <h1>Sino Na? 🍺</h1>
+          <p>Real-time inuman tracker</p>
+        </header>
+        <p class="conn-status ${state.connected ? '' : 'offline'}">
+          ${state.connected ? 'Nakakonekta sa server' : 'Kumokonekta...'}
+        </p>
+        <div class="home-actions">
+          <button type="button" class="btn btn-accent" id="btn-host">Gumawa ng inuman (Host)</button>
+          <button type="button" class="btn btn-ghost" id="btn-join-nav">Sumali sa code</button>
+        </div>
+        ${state.joinError ? `<p class="error-msg" style="margin-top:1rem">${escapeHtml(state.joinError)}</p>` : ''}
+      `;
+    }
+
+    function renderSetup() {
+      const canStart = state.drinkers.length >= 2;
+      const chips =
+        state.drinkers.length === 0
+          ? '<span class="empty-hint">Wala pang kasama — mag-add muna!</span>'
+          : state.drinkers
+              .map(
+                (name, i) => `
+          <span class="chip" data-index="${i}">
+            ${escapeHtml(name)}
+            <button type="button" class="chip-remove" aria-label="Alisin">✕</button>
+          </span>`
+              )
+              .join('');
+
+      return `
+        <header class="setup-header">
+          <h1>Sino Na? 🍺</h1>
+          <p>I-setup ang inuman</p>
+        </header>
+        <div class="add-row">
+          <input type="text" id="name-input" placeholder="Pangalan..." maxlength="32" autocomplete="off" />
+          <button type="button" class="btn btn-accent" id="btn-add" style="width:auto">Add</button>
+        </div>
+        <p class="error-msg" role="alert">${escapeHtml(state.setupError)}</p>
+        <div class="chip-list">${chips}</div>
+        <footer class="setup-footer">
+          <button type="button" class="btn btn-accent" id="btn-start" ${canStart && state.connected ? '' : 'disabled'}>
+            Simulan na!
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-back-home">Bumalik</button>
+        </footer>
+      `;
+    }
+
+    function renderJoin() {
+      const taken = takenIndices();
+      const list =
+        state.peekDrinkers.length === 0
+          ? '<p class="empty-hint">Ilagay ang room code at i-tap ang Hanapin.</p>'
+          : state.peekDrinkers
+              .map((name, i) => {
+                const isTaken = taken.has(i);
+                const sel = state.joinSelected === i;
+                return `
+            <div class="picker-item ${sel ? 'selected' : ''} ${isTaken ? 'taken' : ''}"
+                 data-index="${i}" role="button" tabindex="0">
+              <span>${escapeHtml(name)}</span>
+              ${isTaken ? '<span class="taken-label">May naka-claim na</span>' : ''}
+            </div>`;
+              })
+              .join('');
+
+      return `
+        <header class="screen-header">
+          <h1>Sumali</h1>
+          <p>Ilagay ang room code ng host</p>
+        </header>
+        <input type="text" class="code-input" id="join-code" maxlength="4"
+          placeholder="B7KQ" value="${escapeHtml(state.joinCode)}" autocomplete="off" />
+        <p class="error-msg">${escapeHtml(state.joinError)}</p>
+        <button type="button" class="btn btn-ghost" id="btn-peek" style="margin-bottom:1rem">Hanapin ang room</button>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:0.5rem">Sino ka sa bilog?</p>
+        <div class="picker-list">${list}</div>
+        <footer class="setup-footer">
+          <button type="button" class="btn btn-accent" id="btn-join-confirm"
+            ${state.joinSelected >= 0 && state.connected ? '' : 'disabled'}>
+            Sumali na!
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-back-home">Bumalik</button>
+        </footer>
+      `;
+    }
+
+    function renderTracker() {
+      const total = state.drinkers.length;
+      const done = state.drunkThisRound.length;
+      const radius = 42;
+      const taken = takenIndices();
+
+      const slots = state.drinkers
+        .map((name, i) => {
+          const angle = (i / total) * 360 - 90;
+          const rad = (angle * Math.PI) / 180;
+          const x = 50 + radius * Math.cos(rad);
+          const y = 50 + radius * Math.sin(rad);
+          const isActive = i === state.currentIndex && !state.celebrating;
+          const isDone = state.drunkThisRound.includes(i);
+          const isYou = state.role === 'player' && state.drinkerIndex === i;
+          const classes = ['drinker-slot', isActive ? 'active' : '', isDone ? 'done' : '', isYou ? 'you' : '']
+            .filter(Boolean)
+            .join(' ');
+          return `
+            <div class="${classes}" style="left:${x}%;top:${y}%">
+              <span class="drinker-name">${escapeHtml(name)}</span>
+            </div>`;
+        })
+        .join('');
+
+      let centerBtn = '';
+      if (state.role === 'player') {
+        if (isMyTurn()) {
+          centerBtn = `<button type="button" class="btn btn-shot" id="btn-shot">Ininom ko na! 🥃</button>`;
+        } else {
+          const waitText = state.celebrating
+            ? 'Next round...'
+            : `Hintay — si ${escapeHtml(currentDrinkerName())}`;
+          centerBtn = `<div class="btn btn-shot waiting" aria-disabled="true">${waitText}</div>`;
+        }
+      } else if (state.role === 'host') {
+        centerBtn = `<div class="btn btn-shot waiting" aria-disabled="true">
+          Si <strong style="color:var(--accent)">${escapeHtml(currentDrinkerName())}</strong> ang turno
+        </div>`;
+      }
+
+      const hostEdit =
+        state.role === 'host'
+          ? `
+        <section class="host-edit">
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem">Host: i-edit ang grupo</p>
+          <div class="add-row">
+            <input type="text" id="host-add-input" placeholder="Magdagdag..." maxlength="32" />
+            <button type="button" class="btn btn-accent" id="btn-host-add" style="width:auto">Add</button>
+          </div>
+          <div class="chip-list">
+            ${state.drinkers
+              .map(
+                (name, i) => `
+              <span class="chip" data-index="${i}">
+                ${escapeHtml(name)}
+                <button type="button" class="chip-remove" ${state.drinkers.length <= 2 ? 'disabled' : ''}>✕</button>
+              </span>`
+              )
+              .join('')}
+          </div>
+        </section>`
+          : '';
+
+      const celebration = state.celebrating
+        ? `<div class="celebration"><div class="celebration-box">
+            <h2>Lahat nakainom! 🎉</h2><p>Next round na...</p>
+          </div></div>`
+        : '';
+
+      const turnHint =
+        state.role === 'player' && isMyTurn()
+          ? '<p class="turn-hint">Ikaw na! 🥃</p>'
+          : state.role === 'player'
+            ? `<p class="turn-hint">Ikaw: ${escapeHtml(state.drinkers[state.drinkerIndex] || '')}</p>`
+            : '';
+
+      return `
+        <div class="tracker-screen">
+          <div class="room-code-banner">
+            <div class="label">Room code — i-share sa barkada</div>
+            <div class="code">${escapeHtml(state.code || '')}</div>
+            <div class="hint">Same URL ng app + code na ito</div>
+            ${state.role === 'host' ? '<span class="role-badge">Host</span>' : '<span class="role-badge">Player</span>'}
+          </div>
+          <p class="conn-status ${state.connected ? '' : 'offline'}">
+            ${state.connected ? 'Live sync' : 'Nawalan ng koneksyon — nagre-reconnect...'}
+          </p>
+          <p class="round-bar"><strong>Round ${state.round}</strong> · ${done}/${total} na nakainom</p>
+          ${turnHint}
+          <div class="circle-stage">
+            <div class="circle-ring"></div>
+            ${slots}
+            <div class="center-zone">${centerBtn}</div>
+          </div>
+          ${celebration}
+          ${hostEdit}
+          <footer class="tracker-footer">
+            ${
+              state.role === 'host'
+                ? `<button type="button" class="btn btn-danger" id="btn-end">Tapusin ang inuman</button>
+                   <button type="button" class="btn btn-ghost" id="btn-leave-host">Umalis</button>`
+                : `<button type="button" class="btn btn-ghost" id="btn-leave-player">Umalis sa room</button>`
+            }
+          </footer>
+        </div>`;
+    }
+
+    function renderEnded() {
+      return `
+        <div class="ended-screen">
+          <div class="ended-box">
+            <h2>Tapos na ang inuman 👋</h2>
+            <p style="color:var(--text-muted);margin-top:0.5rem">Salamat sa pag-inom responsibly!</p>
+          </div>
+          <footer class="setup-footer" style="width:100%">
+            <button type="button" class="btn btn-accent" id="btn-home-ended">Bumalik sa home</button>
+          </footer>
+        </div>`;
+    }
+
+    function bindHome() {
+      $('#btn-host')?.addEventListener('click', () => {
+        state.screen = 'setup';
+        state.role = 'host';
+        state.joinError = '';
+        render();
+      });
+      $('#btn-join-nav')?.addEventListener('click', () => {
+        state.screen = 'join';
+        state.joinError = '';
+        state.joinSelected = -1;
+        state.peekDrinkers = [];
+        render();
+      });
+    }
+
+    function bindSetup() {
+      const input = $('#name-input');
+      const add = () => {
+        const name = normalizeName(input.value);
+        if (!name) {
+          state.setupError = 'Maglagay ng pangalan.';
+          render();
+          return;
+        }
+        if (isDuplicateLocal(name)) {
+          state.setupError = 'May ganyan na sa listahan.';
+          render();
+          return;
+        }
+        state.setupError = '';
+        state.drinkers.push(name);
+        input.value = '';
+        render();
+        input.focus();
+      };
+
+      $('#btn-add')?.addEventListener('click', add);
+      input?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') add();
+      });
+
+      $('#btn-start')?.addEventListener('click', () => {
+        if (state.drinkers.length < 2) return;
+        socket.emit('room:create', { drinkers: state.drinkers }, (res) => {
+          if (!res?.ok) {
+            state.setupError = res?.error || 'Hindi masimulan ang room.';
+            render();
+            return;
+          }
+          state.role = 'host';
+          state.drinkerIndex = -1;
+          applyServerState(res.state);
+          saveSession();
+        });
+      });
+
+      document.querySelectorAll('.chip-remove').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const chip = e.target.closest('.chip');
+          const index = Number(chip?.dataset.index);
+          if (!Number.isNaN(index)) {
+            state.drinkers.splice(index, 1);
+            state.setupError = '';
+            render();
+          }
+        });
+      });
+
+      $('#btn-back-home')?.addEventListener('click', goHome);
+      input?.focus();
+    }
+
+    function bindJoin() {
+      const codeInput = $('#join-code');
+      codeInput?.addEventListener('input', (e) => {
+        state.joinCode = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+        e.target.value = state.joinCode;
+      });
+
+      $('#btn-peek')?.addEventListener('click', () => {
+        const code = state.joinCode || codeInput?.value || '';
+        state.joinError = '';
+        socket.emit('room:peek', { code }, (res) => {
+          if (!res?.ok) {
+            state.joinError = res?.error || 'Hindi mahanap ang room.';
+            state.peekDrinkers = [];
+            render();
+            return;
+          }
+          state.peekDrinkers = res.drinkers;
+          state.peekTaken = res.takenIndices || [];
+          state.joinSelected = -1;
+          render();
+        });
+      });
+
+      document.querySelectorAll('.picker-item:not(.taken)').forEach((el) => {
+        el.addEventListener('click', () => {
+          const idx = Number(el.dataset.index);
+          if (!Number.isNaN(idx)) {
+            state.joinSelected = idx;
+            render();
+          }
+        });
+      });
+
+      $('#btn-join-confirm')?.addEventListener('click', () => {
+        socket.emit(
+          'room:join',
+          { code: state.joinCode, drinkerIndex: state.joinSelected },
+          (res) => {
+            if (!res?.ok) {
+              state.joinError = res?.error || 'Hindi makasali.';
+              render();
+              return;
+            }
+            state.role = 'player';
+            state.drinkerIndex = res.drinkerIndex;
+            state.joinError = '';
+            applyServerState(res.state);
+            saveSession();
+          }
+        );
+      });
+
+      $('#btn-back-home')?.addEventListener('click', goHome);
+    }
+
+    function bindTracker() {
+      $('#btn-shot')?.addEventListener('click', () => {
+        socket.emit('shot:mark', {}, (res) => {
+          if (!res?.ok) {
+            state.setupError = res?.error || '';
+          }
+        });
+      });
+
+      $('#btn-end')?.addEventListener('click', () => {
+        if (!confirm('Tapusin na ang inuman para sa lahat?')) return;
+        socket.emit('session:end', {}, () => {
+          state.screen = 'ended';
+          clearSession();
+          render();
+        });
+      });
+
+      $('#btn-leave-host')?.addEventListener('click', () => {
+        if (state.role === 'host' && state.code) {
+          if (confirm('Tapusin ang session para sa lahat?')) {
+            socket.emit('session:end', {}, () => {
+              goHome();
+            });
+            return;
+          }
+        }
+        goHome();
+      });
+
+      $('#btn-leave-player')?.addEventListener('click', goHome);
+
+      if (state.role === 'host') {
+        const hostInput = $('#host-add-input');
+        $('#btn-host-add')?.addEventListener('click', () => {
+          const name = normalizeName(hostInput?.value || '');
+          socket.emit('drinkers:add', { name }, (res) => {
+            if (!res?.ok) state.setupError = res?.error || 'Error';
+            else {
+              state.setupError = '';
+              hostInput.value = '';
+            }
+            render();
+          });
+        });
+
+        document.querySelectorAll('.host-edit .chip-remove').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            const chip = e.target.closest('.chip');
+            const index = Number(chip?.dataset.index);
+            if (!Number.isNaN(index)) {
+              socket.emit('drinkers:remove', { index }, (res) => {
+                if (!res?.ok) state.setupError = res?.error || 'Error';
+                render();
+              });
+            }
+          });
+        });
+      }
+    }
+
+    function bindEnded() {
+      $('#btn-home-ended')?.addEventListener('click', goHome);
+    }
+
+    function goHome() {
+      clearSession();
+      state.screen = 'home';
+      state.role = null;
+      state.code = null;
+      state.drinkerIndex = -1;
+      state.drinkers = [];
+      state.drunkThisRound = [];
+      state.celebrating = false;
+      state.peekDrinkers = [];
+      state.joinCode = '';
+      state.joinSelected = -1;
+      render();
+    }
+
+    function render() {
+      const app = $('#app');
+      let html = '';
+      switch (state.screen) {
+        case 'setup':
+          html = renderSetup();
+          break;
+        case 'join':
+          html = renderJoin();
+          break;
+        case 'tracker':
+          html = renderTracker();
+          break;
+        case 'ended':
+          html = renderEnded();
+          break;
+        default:
+          html = renderHome();
+      }
+      app.innerHTML = html;
+
+      switch (state.screen) {
+        case 'home':
+          bindHome();
+          break;
+        case 'setup':
+          bindSetup();
+          break;
+        case 'join':
+          bindJoin();
+          break;
+        case 'tracker':
+          bindTracker();
+          break;
+        case 'ended':
+          bindEnded();
+          break;
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
