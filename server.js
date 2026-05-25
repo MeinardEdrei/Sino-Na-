@@ -10,6 +10,7 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CELEBRATION_MS = 2800;
+const ROOM_IDLE_TTL_MS = 6 * 60 * 60 * 1000;
 
 /** @type {Record<string, Room>} */
 const rooms = {};
@@ -27,7 +28,39 @@ function isTanggeroSocket(socketId, room) {
 }
 
 function canManageRoom(socketId, room) {
-  return room.creatorId === socketId;
+  if (room.creatorId && room.players[room.creatorId]) {
+    if (room.creatorId === socketId) return true;
+  }
+  return isTanggeroSocket(socketId, room);
+}
+
+function isCreatorOnline(room) {
+  return Boolean(room.creatorId && room.players[room.creatorId]);
+}
+
+function connectedSocketIds(room, exceptId = null) {
+  return Object.keys(room.players).filter((sid) => sid !== exceptId);
+}
+
+function reassignCreator(room, leavingSocketId, code) {
+  if (room.creatorId !== leavingSocketId) return;
+
+  for (const sid of connectedSocketIds(room, leavingSocketId)) {
+    room.creatorId = sid;
+    const name = room.drinkers[room.players[sid].drinkerIndex];
+    announce(code, `Si ${name} ang bahala sa room habang wala ang nag-setup`);
+    return;
+  }
+
+  room.creatorId = null;
+}
+
+function transferTanggeroIfNeeded(room, leavingDrinkerIndex, code) {
+  if (leavingDrinkerIndex !== room.tanggeroIndex) return;
+
+  room.tanggeroIndex = pickFallbackTanggero(room, leavingDrinkerIndex);
+  const nextName = room.drinkers[room.tanggeroIndex];
+  announce(code, `Si ${nextName} ang tanggero na 🍺`);
 }
 
 function announce(code, message) {
@@ -35,12 +68,15 @@ function announce(code, message) {
 }
 
 function pickFallbackTanggero(room, excludeIndex = -1) {
-  const creator = room.players[room.creatorId];
-  if (creator && creator.drinkerIndex !== excludeIndex) {
-    return creator.drinkerIndex;
-  }
-  for (const p of Object.values(room.players)) {
-    if (p.drinkerIndex !== excludeIndex) return p.drinkerIndex;
+  const indices = Object.values(room.players)
+    .map((p) => p.drinkerIndex)
+    .filter((i) => i !== excludeIndex)
+    .sort((a, b) => a - b);
+
+  if (indices.length > 0) return indices[0];
+
+  for (let i = 0; i < room.drinkers.length; i++) {
+    if (i !== excludeIndex) return i;
   }
   return 0;
 }
@@ -83,6 +119,7 @@ function roomSnapshot(room) {
     drinkCounts: [...room.drinkCounts],
     skipCounts: [...room.skipCounts],
     tanggeroIndex: room.tanggeroIndex,
+    creatorOnline: isCreatorOnline(room),
     playerSlots: Object.fromEntries(
       Object.entries(room.players).map(([sid, p]) => [sid, p.drinkerIndex])
     ),
@@ -96,9 +133,14 @@ function clearCelebrationTimer(room) {
   }
 }
 
+function touchRoom(room) {
+  room.lastActiveAt = Date.now();
+}
+
 function broadcastRoom(code) {
   const room = rooms[code];
   if (!room) return;
+  touchRoom(room);
   io.to(code).emit('room:state', roomSnapshot(room));
 }
 
@@ -277,7 +319,9 @@ io.on('connection', (socket) => {
     const room = {
       code,
       creatorId: socket.id,
+      creatorDrinkerIndex: 0,
       tanggeroIndex: 0,
+      lastActiveAt: Date.now(),
       drinkers,
       status: 'tracker',
       round: 1,
@@ -402,9 +446,14 @@ io.on('connection', (socket) => {
       const idx =
         Number.isInteger(drinkerIndex) && drinkerIndex >= 0
           ? drinkerIndex
-          : 0;
+          : room.creatorDrinkerIndex ?? 0;
       leaveRoom(socket);
       attachSocketToRoom(socket, code, { drinkerIndex: idx, role: 'host' });
+      if (!room.players[socket.id]) {
+        room.players[socket.id] = { drinkerIndex: idx };
+      }
+      const name = room.drinkers[idx];
+      announce(code, `Si ${name} ay bumalik — same room code`);
       ack?.({
         ok: true,
         code,
@@ -571,7 +620,7 @@ io.on('connection', (socket) => {
       return;
     }
     if (!isTanggeroSocket(socket.id, room) && !canManageRoom(socket.id, room)) {
-      ack?.({ ok: false, error: 'Tanggero lang ang pwedeng maglipat.' });
+      ack?.({ ok: false, error: 'Tanggero o room manager lang ang pwedeng maglipat.' });
       return;
     }
 
@@ -666,7 +715,7 @@ io.on('connection', (socket) => {
     }
     const room = rooms[meta.code];
     if (!room || !canManageRoom(socket.id, room)) {
-      ack?.({ ok: false, error: 'Creator lang ang pwedeng mag-end.' });
+      ack?.({ ok: false, error: 'Tanggero o room manager lang ang pwedeng mag-end.' });
       return;
     }
 
@@ -682,22 +731,38 @@ io.on('connection', (socket) => {
   });
 
   function handlePlayerExit(socket, room, meta) {
+    const code = meta.code;
     const player = room.players[socket.id];
-    if (player) {
-      const name = room.drinkers[player.drinkerIndex] || 'May umalis';
-      announce(meta.code, `Si ${name} umalis sa room`);
+    const leavingDrinkerIndex = player?.drinkerIndex ?? -1;
+    const wasCreator = socket.id === room.creatorId;
 
-      if (player.drinkerIndex === room.tanggeroIndex) {
-        room.tanggeroIndex = pickFallbackTanggero(room, player.drinkerIndex);
-        const nextName = room.drinkers[room.tanggeroIndex];
-        announce(meta.code, `Si ${nextName} ang tanggero na 🍺`);
-      }
+    if (player) {
+      const name = room.drinkers[leavingDrinkerIndex] || 'May umalis';
+      announce(code, `Si ${name} umalis sa room (pwede pa ring bumalik — same code)`);
+    } else if (wasCreator) {
+      announce(code, 'Ang nag-setup ay offline — tuloy pa rin ang room');
     }
 
     delete room.players[socket.id];
-    socket.leave(meta.code);
+
+    reassignCreator(room, socket.id, code);
+
+    if (leavingDrinkerIndex >= 0) {
+      transferTanggeroIfNeeded(room, leavingDrinkerIndex, code);
+    }
+
+    const remaining = connectedSocketIds(room);
+    if (remaining.length === 0) {
+      touchRoom(room);
+      announce(
+        code,
+        'Walang nakakonekta — room code valid pa rin. Mag-rejoin kapag bumalik.'
+      );
+    }
+
+    socket.leave(code);
     delete socketMeta[socket.id];
-    broadcastRoom(meta.code);
+    broadcastRoom(code);
   }
 
   socket.on('room:leave', (_payload, ack) => {
@@ -724,6 +789,17 @@ io.on('connection', (socket) => {
     handlePlayerExit(socket, room, meta);
   });
 });
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, room] of Object.entries(rooms)) {
+    if (room.status === 'ended') continue;
+    const empty = Object.keys(room.players).length === 0;
+    if (empty && now - (room.lastActiveAt || 0) > ROOM_IDLE_TTL_MS) {
+      destroyRoom(code);
+    }
+  }
+}, 10 * 60 * 1000);
 
 server.listen(PORT, () => {
   console.log(`Sino Na? server running on port ${PORT}`);
