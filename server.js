@@ -9,27 +9,13 @@ const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const CELEBRATION_MS = 2200;
+const CELEBRATION_MS = 2800;
 
 /** @type {Record<string, Room>} */
 const rooms = {};
 
 /** @type {Record<string, { code: string, drinkerIndex: number, role: 'host' | 'player' }>} */
 const socketMeta = {};
-
-/**
- * @typedef {Object} Room
- * @property {string} code
- * @property {string} hostId
- * @property {string[]} drinkers
- * @property {'tracker' | 'ended'} status
- * @property {number} round
- * @property {number} currentIndex
- * @property {number[]} drunkThisRound
- * @property {boolean} celebrating
- * @property {NodeJS.Timeout | null} celebrationTimer
- * @property {Record<string, { drinkerIndex: number }>} players
- */
 
 function generateRoomCode() {
   let code;
@@ -48,6 +34,14 @@ function normalizeName(name) {
   return String(name).trim().replace(/\s+/g, ' ');
 }
 
+function initStats(length) {
+  return Array.from({ length }, () => 0);
+}
+
+function completedSet(room) {
+  return new Set([...room.drunkThisRound, ...room.skippedThisRound]);
+}
+
 function roomSnapshot(room) {
   return {
     code: room.code,
@@ -56,7 +50,10 @@ function roomSnapshot(room) {
     round: room.round,
     currentIndex: room.currentIndex,
     drunkThisRound: [...room.drunkThisRound],
+    skippedThisRound: [...room.skippedThisRound],
     celebrating: room.celebrating,
+    drinkCounts: [...room.drinkCounts],
+    skipCounts: [...room.skipCounts],
     playerSlots: Object.fromEntries(
       Object.entries(room.players).map(([sid, p]) => [sid, p.drinkerIndex])
     ),
@@ -88,6 +85,7 @@ function advanceAfterCelebration(code) {
   if (!room || room.status !== 'tracker') return;
   room.round += 1;
   room.drunkThisRound = [];
+  room.skippedThisRound = [];
   room.currentIndex = 0;
   room.celebrating = false;
   room.celebrationTimer = null;
@@ -105,9 +103,26 @@ function startCelebration(code) {
   }, CELEBRATION_MS);
 }
 
-function getSocketRole(socketId, room) {
-  if (room.hostId === socketId) return 'host';
-  return room.players[socketId] ? 'player' : null;
+function isRoundComplete(room) {
+  return completedSet(room).size >= room.drinkers.length;
+}
+
+function advanceTurn(room, code) {
+  const total = room.drinkers.length;
+  const done = completedSet(room);
+
+  if (done.size >= total) {
+    startCelebration(code);
+    return;
+  }
+
+  for (let i = 1; i <= total; i++) {
+    const next = (room.currentIndex + i) % total;
+    if (!done.has(next)) {
+      room.currentIndex = next;
+      return;
+    }
+  }
 }
 
 function canMarkShot(socketId, room) {
@@ -115,6 +130,13 @@ function canMarkShot(socketId, room) {
   const player = room.players[socketId];
   if (!player) return false;
   return player.drinkerIndex === room.currentIndex;
+}
+
+function canSkip(socketId, room) {
+  if (room.status !== 'tracker' || room.celebrating) return false;
+  if (room.hostId === socketId) return true;
+  const player = room.players[socketId];
+  return player && player.drinkerIndex === room.currentIndex;
 }
 
 function attachSocketToRoom(socket, code, meta) {
@@ -127,10 +149,22 @@ function attachSocketToRoom(socket, code, meta) {
   }
 
   socket.join(code);
-  socketMeta[socket.id] = { code, drinkerIndex: meta.drinkerIndex, role: meta.role };
+  socketMeta[socket.id] = {
+    code,
+    drinkerIndex: meta.drinkerIndex,
+    role: meta.role,
+  };
 
   if (meta.role === 'host') {
     room.hostId = socket.id;
+    if (meta.drinkerIndex >= 0) {
+      for (const [sid, p] of Object.entries(room.players)) {
+        if (sid !== socket.id && p.drinkerIndex === meta.drinkerIndex) {
+          delete room.players[sid];
+        }
+      }
+      room.players[socket.id] = { drinkerIndex: meta.drinkerIndex };
+    }
   } else if (meta.drinkerIndex >= 0) {
     for (const [sid, p] of Object.entries(room.players)) {
       if (sid !== socket.id && p.drinkerIndex === meta.drinkerIndex) {
@@ -149,12 +183,47 @@ function leaveRoom(socket) {
 
   const room = rooms[meta.code];
   if (room) {
-    if (meta.role === 'player') {
+    if (meta.role === 'player' || meta.drinkerIndex >= 0) {
       delete room.players[socket.id];
     }
     socket.leave(meta.code);
   }
   delete socketMeta[socket.id];
+}
+
+function remapIndex(idx, removedIndex) {
+  if (idx === removedIndex) return -1;
+  if (idx > removedIndex) return idx - 1;
+  return idx;
+}
+
+function findDrinkerByName(room, name) {
+  const n = name.toLowerCase();
+  return room.drinkers.findIndex((d) => d.toLowerCase() === n);
+}
+
+function buildDrinkerList(hostName, others) {
+  const host = normalizeName(hostName);
+  if (!host) return { error: 'Ilagay ang pangalan mo.' };
+
+  const seen = new Set([host.toLowerCase()]);
+  const list = [host];
+
+  for (const raw of others || []) {
+    const name = normalizeName(raw);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      list.push(name);
+    }
+  }
+
+  if (list.length < 2) {
+    return { error: 'Magdagdag ng kahit isang kasama pa.' };
+  }
+
+  return { drinkers: list };
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -165,48 +234,38 @@ app.get('/', (_req, res) => {
 
 io.on('connection', (socket) => {
   socket.on('room:create', (payload, ack) => {
-    const drinkers = (payload?.drinkers || [])
-      .map(normalizeName)
-      .filter(Boolean);
-
-    const seen = new Set();
-    const unique = [];
-    for (const name of drinkers) {
-      const key = name.toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(name);
-      }
-    }
-
-    if (unique.length < 2) {
-      ack?.({ ok: false, error: 'Kailangan ng hindi bababa sa 2 pangalan.' });
+    const built = buildDrinkerList(payload?.hostName, payload?.drinkers);
+    if (built.error) {
+      ack?.({ ok: false, error: built.error });
       return;
     }
 
+    const drinkers = built.drinkers;
     leaveRoom(socket);
 
     const code = generateRoomCode();
     const room = {
       code,
       hostId: socket.id,
-      drinkers: unique,
+      drinkers,
       status: 'tracker',
       round: 1,
       currentIndex: 0,
       drunkThisRound: [],
+      skippedThisRound: [],
       celebrating: false,
       celebrationTimer: null,
+      drinkCounts: initStats(drinkers.length),
+      skipCounts: initStats(drinkers.length),
       players: {},
     };
 
     rooms[code] = room;
     attachSocketToRoom(socket, code, {
-      drinkerIndex: -1,
+      drinkerIndex: 0,
       role: 'host',
     });
 
-    socket.to(code).emit('room:state', roomSnapshot(room));
     ack?.({ ok: true, code, state: roomSnapshot(room) });
     broadcastRoom(code);
   });
@@ -237,7 +296,8 @@ io.on('connection', (socket) => {
     const code = String(payload?.code || '')
       .trim()
       .toUpperCase();
-    const drinkerIndex = Number(payload?.drinkerIndex);
+    const playerName = normalizeName(payload?.playerName || '');
+    let drinkerIndex = Number(payload?.drinkerIndex);
 
     const room = rooms[code];
     if (!room) {
@@ -248,12 +308,29 @@ io.on('connection', (socket) => {
       ack?.({ ok: false, error: 'Tapos na ang inuman sa room na ito.' });
       return;
     }
+
+    if (playerName) {
+      drinkerIndex = findDrinkerByName(room, playerName);
+      if (drinkerIndex < 0) {
+        ack?.({ ok: false, error: 'Wala ang pangalan mo sa listahan ng host.' });
+        return;
+      }
+    }
+
     if (
       !Number.isInteger(drinkerIndex) ||
       drinkerIndex < 0 ||
       drinkerIndex >= room.drinkers.length
     ) {
-      ack?.({ ok: false, error: 'Pumili ng pangalan sa listahan.' });
+      ack?.({ ok: false, error: 'Ilagay ang pangalan mo sa listahan.' });
+      return;
+    }
+
+    const taken = Object.entries(room.players).some(
+      ([sid, p]) => sid !== socket.id && p.drinkerIndex === drinkerIndex
+    );
+    if (taken) {
+      ack?.({ ok: false, error: 'May naka-claim na sa pangalang ito.' });
       return;
     }
 
@@ -291,14 +368,18 @@ io.on('connection', (socket) => {
     }
 
     if (role === 'host') {
+      const idx =
+        Number.isInteger(drinkerIndex) && drinkerIndex >= 0
+          ? drinkerIndex
+          : 0;
       leaveRoom(socket);
-      attachSocketToRoom(socket, code, { drinkerIndex: -1, role: 'host' });
+      attachSocketToRoom(socket, code, { drinkerIndex: idx, role: 'host' });
       ack?.({
         ok: true,
         code,
         state: roomSnapshot(room),
         role: 'host',
-        drinkerIndex: -1,
+        drinkerIndex: idx,
       });
       broadcastRoom(code);
       return;
@@ -352,6 +433,8 @@ io.on('connection', (socket) => {
     }
 
     room.drinkers.push(name);
+    room.drinkCounts.push(0);
+    room.skipCounts.push(0);
     ack?.({ ok: true });
     broadcastRoom(meta.code);
   });
@@ -381,26 +464,30 @@ io.on('connection', (socket) => {
       ack?.({ ok: false, error: 'Invalid index.' });
       return;
     }
+    if (index === 0) {
+      ack?.({ ok: false, error: 'Hindi pwedeng alisin ang host.' });
+      return;
+    }
     if (room.drinkers.length <= 2) {
       ack?.({ ok: false, error: 'Hindi bababa sa 2 ang kailangan.' });
       return;
     }
 
     room.drinkers.splice(index, 1);
+    room.drinkCounts.splice(index, 1);
+    room.skipCounts.splice(index, 1);
 
-    const remap = (idx) => {
-      if (idx === index) return -1;
-      if (idx > index) return idx - 1;
-      return idx;
-    };
+    const remap = (idx) => remapIndex(idx, index);
 
     room.currentIndex = Math.min(
-      remap(room.currentIndex) < 0 ? 0 : remap(room.currentIndex),
+      Math.max(0, remap(room.currentIndex)),
       room.drinkers.length - 1
     );
-    if (room.currentIndex < 0) room.currentIndex = 0;
 
     room.drunkThisRound = room.drunkThisRound
+      .map(remap)
+      .filter((i) => i >= 0);
+    room.skippedThisRound = room.skippedThisRound
       .map(remap)
       .filter((i) => i >= 0);
 
@@ -411,7 +498,9 @@ io.on('connection', (socket) => {
         const sock = io.sockets.sockets.get(sid);
         if (sock) {
           delete socketMeta[sid];
-          sock.emit('room:kicked', { reason: 'Inalis ang pangalan mo sa grupo.' });
+          sock.emit('room:kicked', {
+            reason: 'Inalis ang pangalan mo sa grupo.',
+          });
         }
       } else {
         p.drinkerIndex = next;
@@ -419,8 +508,9 @@ io.on('connection', (socket) => {
     }
 
     const hostMeta = socketMeta[room.hostId];
-    if (hostMeta && hostMeta.drinkerIndex >= 0) {
+    if (hostMeta) {
       hostMeta.drinkerIndex = remap(hostMeta.drinkerIndex);
+      if (hostMeta.drinkerIndex < 0) hostMeta.drinkerIndex = 0;
     }
 
     ack?.({ ok: true });
@@ -447,15 +537,48 @@ io.on('connection', (socket) => {
     if (!room.drunkThisRound.includes(idx)) {
       room.drunkThisRound.push(idx);
     }
+    room.drinkCounts[idx] = (room.drinkCounts[idx] || 0) + 1;
 
-    const total = room.drinkers.length;
-    if (room.drunkThisRound.length >= total) {
+    if (isRoundComplete(room)) {
       startCelebration(meta.code);
       ack?.({ ok: true });
       return;
     }
 
-    room.currentIndex = (idx + 1) % total;
+    advanceTurn(room, meta.code);
+    ack?.({ ok: true });
+    broadcastRoom(meta.code);
+  });
+
+  socket.on('shot:skip', (_payload, ack) => {
+    const meta = socketMeta[socket.id];
+    if (!meta) {
+      ack?.({ ok: false, error: 'Walang room.' });
+      return;
+    }
+    const room = rooms[meta.code];
+    if (!room) {
+      ack?.({ ok: false, error: 'Walang room.' });
+      return;
+    }
+    if (!canSkip(socket.id, room)) {
+      ack?.({ ok: false, error: 'Hindi pwedeng mag-skip ngayon.' });
+      return;
+    }
+
+    const idx = room.currentIndex;
+    if (!room.skippedThisRound.includes(idx)) {
+      room.skippedThisRound.push(idx);
+    }
+    room.skipCounts[idx] = (room.skipCounts[idx] || 0) + 1;
+
+    if (isRoundComplete(room)) {
+      startCelebration(meta.code);
+      ack?.({ ok: true });
+      return;
+    }
+
+    advanceTurn(room, meta.code);
     ack?.({ ok: true });
     broadcastRoom(meta.code);
   });
@@ -493,10 +616,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (meta.role === 'player') {
-      delete room.players[socket.id];
-    }
-
+    delete room.players[socket.id];
     delete socketMeta[socket.id];
     broadcastRoom(meta.code);
   });
