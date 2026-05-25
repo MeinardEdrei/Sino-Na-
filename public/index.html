@@ -4,33 +4,65 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Sino Na? 🍺</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #070b14;
-      --bg-card: #12182a;
-      --accent: #f5b942;
-      --accent-glow: rgba(245, 185, 66, 0.55);
-      --accent-dim: #c4922e;
-      --warm: #e85d4a;
-      --text: #f0f2f8;
-      --text-muted: #8b95ad;
-      --border: #2a3550;
-      --success: #4ade80;
-      --radius: 14px;
-      --tap: 56px;
-      --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --bg: #060912;
+      --bg-elevated: #0e1424;
+      --bg-card: rgba(18, 26, 46, 0.82);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --accent: #f4bc3d;
+      --accent-glow: rgba(244, 188, 61, 0.45);
+      --accent-dim: #c99728;
+      --warm: #ef6f5d;
+      --warm-dim: #c94e3e;
+      --text: #eef1f8;
+      --text-muted: #919bb5;
+      --border: rgba(58, 72, 108, 0.65);
+      --success: #5ee9a0;
+      --radius-sm: 10px;
+      --radius: 16px;
+      --radius-lg: 22px;
+      --tap: 52px;
+      --font: "DM Sans", system-ui, -apple-system, sans-serif;
+      --font-display: "Outfit", var(--font);
+      --space-xs: 0.35rem;
+      --space-sm: 0.65rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --app-max: 1120px;
+      --content-max: 480px;
+      --bubble-size: clamp(56px, 14vw, 76px);
+      --bubble-active: clamp(72px, 18vw, 96px);
+      --circle-size: min(92vw, 92vh, 420px);
+      --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.35);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { height: 100%; -webkit-tap-highlight-color: transparent; }
+
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     body {
-      min-height: 100dvh;
+      height: 100dvh;
+      height: 100vh;
       font-family: var(--font);
-      background: var(--bg);
+      font-size: 16px;
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -30%, rgba(244, 188, 61, 0.09), transparent 50%),
+        radial-gradient(ellipse 80% 50% at 100% 80%, rgba(239, 111, 93, 0.07), transparent),
+        var(--bg);
       color: var(--text);
-      line-height: 1.4;
-      overflow-x: hidden;
+      line-height: 1.5;
+      overflow: hidden;
       position: relative;
     }
 
@@ -77,31 +109,100 @@
     #app {
       position: relative;
       z-index: 1;
-      min-height: 100dvh;
+      width: 100%;
+      max-width: var(--app-max);
+      height: 100%;
+      margin: 0 auto;
       display: flex;
       flex-direction: column;
-      padding: max(1rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
-      max-width: 480px;
+      padding:
+        calc(var(--safe-top) + var(--space-md))
+        var(--space-md)
+        calc(var(--safe-bottom) + var(--space-md));
+    }
+
+    .screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      width: 100%;
+      max-width: var(--content-max);
       margin: 0 auto;
+    }
+
+    .screen--wide { max-width: 100%; }
+
+    .screen-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-bottom: var(--space-md);
+    }
+
+    .screen-footer {
+      flex-shrink: 0;
+      padding-top: var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: var(--space-lg);
+      padding-top: var(--space-xs);
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      margin-bottom: var(--space-sm);
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(244, 188, 61, 0.25), rgba(239, 111, 93, 0.15));
+      border: 1px solid var(--glass-border);
+      font-size: 1.6rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    .brand h1, .setup-header h1, .screen-header h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.85rem, 5vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand p, .setup-header p, .screen-header p {
+      margin-top: var(--space-xs);
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 28ch;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .setup-header, .screen-header {
       text-align: center;
-      margin-bottom: 1.25rem;
-      padding-top: 0.25rem;
+      margin-bottom: var(--space-lg);
     }
 
-    .setup-header h1, .screen-header h1 {
-      font-size: clamp(2rem, 8vw, 2.75rem);
-      font-weight: 800;
-      color: var(--accent);
-      text-shadow: 0 0 40px var(--accent-glow);
-    }
-
-    .setup-header p, .screen-header p {
-      margin-top: 0.4rem;
-      color: var(--text-muted);
-      font-size: 1rem;
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-card);
     }
 
     .field-label {
@@ -123,87 +224,123 @@
 
     .room-code-banner {
       text-align: center;
-      margin-bottom: 0.75rem;
-      padding: 0.85rem 1rem;
-      background: var(--bg-card);
-      border: 2px solid var(--accent);
-      border-radius: var(--radius);
-      box-shadow: 0 0 24px var(--accent-glow);
+      padding: var(--space-md);
+      margin-bottom: var(--space-sm);
     }
 
     .room-code-banner .label {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.12em;
     }
 
     .room-code-banner .code {
-      font-size: 2.2rem;
-      font-weight: 900;
-      letter-spacing: 0.2em;
+      font-family: var(--font-display);
+      font-size: clamp(1.75rem, 6vw, 2.35rem);
+      font-weight: 800;
+      letter-spacing: 0.22em;
       color: var(--accent);
+      margin: var(--space-xs) 0;
     }
 
     .role-badge {
-      display: inline-block;
-      margin-top: 0.35rem;
-      padding: 0.2rem 0.55rem;
-      font-size: 0.7rem;
+      display: inline-flex;
+      margin-top: var(--space-xs);
+      padding: 0.3rem 0.7rem;
+      font-size: 0.72rem;
       font-weight: 700;
       border-radius: 999px;
-      background: rgba(245, 185, 66, 0.15);
+      background: rgba(244, 188, 61, 0.12);
       color: var(--accent);
+      border: 1px solid rgba(244, 188, 61, 0.25);
     }
 
-    .conn-status {
-      text-align: center;
-      font-size: 0.75rem;
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      font-weight: 600;
       color: var(--text-muted);
-      margin-bottom: 0.35rem;
+      margin-bottom: var(--space-sm);
     }
 
-    .conn-status.offline { color: var(--warm); }
+    .status-pill::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .status-pill.offline::before {
+      background: var(--warm);
+      box-shadow: 0 0 8px var(--warm);
+    }
 
     .round-bar-promo {
       width: 100%;
       text-align: center;
-      font-size: 1.15rem;
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
       font-weight: 800;
-      padding: 0.65rem 0.75rem;
-      margin-bottom: 0.5rem;
-      background: linear-gradient(135deg, rgba(245, 185, 66, 0.18), rgba(232, 93, 74, 0.1));
-      border: 1px solid rgba(245, 185, 66, 0.35);
+      padding: var(--space-md);
+      margin-bottom: var(--space-sm);
+      background: linear-gradient(135deg, rgba(244, 188, 61, 0.14), rgba(239, 111, 93, 0.08));
+      border: 1px solid rgba(244, 188, 61, 0.28);
       border-radius: var(--radius);
-      color: var(--text);
     }
 
     .round-bar-promo .hl { color: var(--accent); }
 
-    .tracker-toolbar {
-      width: 100%;
+    .tracker-layout {
       display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
+      flex-direction: column;
+      gap: var(--space-md);
+      width: 100%;
+      min-height: 0;
+      flex: 1;
     }
 
-    .tracker-toolbar .btn { flex: 1; min-height: 44px; font-size: 0.85rem; }
+    .tracker-side {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      flex-shrink: 0;
+    }
+
+    .tracker-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    .tracker-toolbar .btn {
+      min-height: 44px;
+      font-size: 0.88rem;
+    }
 
     .add-row {
-      display: flex;
-      gap: 0.65rem;
-      margin-bottom: 0.75rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
     }
 
     .add-row input, .code-input, .text-input {
-      flex: 1;
       width: 100%;
       min-height: var(--tap);
-      padding: 0 1rem;
-      font-size: 1.05rem;
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--bg-card);
+      padding: 0 var(--space-md);
+      font-family: inherit;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
       color: var(--text);
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
@@ -211,13 +348,14 @@
 
     .code-input {
       text-align: center;
-      letter-spacing: 0.35em;
+      letter-spacing: 0.4em;
       font-weight: 800;
+      font-family: var(--font-display);
       text-transform: uppercase;
     }
 
     .text-input:focus, .code-input:focus, .add-row input:focus {
-      border-color: var(--accent);
+      border-color: rgba(244, 188, 61, 0.6);
       box-shadow: 0 0 0 3px var(--accent-glow);
     }
 
@@ -225,46 +363,58 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 0.35rem;
       min-height: var(--tap);
-      padding: 0 1.25rem;
+      padding: 0 var(--space-lg);
+      font-family: inherit;
       font-size: 1rem;
       font-weight: 700;
       border: none;
-      border-radius: var(--radius);
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      transition: transform 0.15s, background 0.2s, opacity 0.2s;
+      touch-action: manipulation;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s;
       user-select: none;
       width: 100%;
     }
 
-    .btn:active:not(:disabled) { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { filter: brightness(1.05); }
+
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .btn-accent {
       background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dim) 100%);
-      color: #1a1208;
-      box-shadow: 0 4px 20px var(--accent-glow);
+      color: #1a1206;
+      box-shadow: 0 6px 24px var(--accent-glow);
     }
 
     .btn-ghost {
-      background: transparent;
-      color: var(--text-muted);
-      border: 2px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
 
     .btn-skip {
-      background: var(--bg-card);
+      background: var(--bg-elevated);
       color: var(--text-muted);
-      border: 2px solid var(--border);
-      min-height: 48px;
-      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      min-height: var(--tap);
+      font-size: 0.92rem;
     }
 
     .btn-danger {
-      background: transparent;
+      background: rgba(239, 111, 93, 0.08);
       color: var(--warm);
-      border: 2px solid var(--warm);
-      margin-top: 0.5rem;
+      border: 1px solid rgba(239, 111, 93, 0.45);
+    }
+
+    .btn-inline {
+      width: auto;
+      min-width: 5.5rem;
+      padding: 0 var(--space-md);
+      white-space: nowrap;
     }
 
     .error-msg {
@@ -309,36 +459,46 @@
       font-size: 0.95rem;
     }
 
-    .setup-footer, .tracker-footer, .home-actions {
-      margin-top: auto;
-      padding-top: 1rem;
+    .home-actions {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: var(--space-sm);
     }
 
-    .tracker-screen {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    .circle-wrap {
       width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: var(--space-xs) 0;
+    }
+
+    .circle-wrap,
+    .circle-stage {
+      overflow: visible;
     }
 
     .circle-stage {
       position: relative;
-      width: min(360px, 94vw);
-      aspect-ratio: 1;
+      width: var(--circle-size);
+      height: var(--circle-size);
+      max-width: 100%;
       flex-shrink: 0;
-      margin: 0.25rem 0 0.75rem;
     }
 
     .circle-guide {
       position: absolute;
-      inset: 8%;
-      border: 1px dashed rgba(42, 53, 80, 0.6);
+      inset: 10%;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
       border-radius: 50%;
       pointer-events: none;
+    }
+
+    .circle-guide::after {
+      content: '';
+      position: absolute;
+      inset: 22%;
+      border-radius: 50%;
+      border: 1px solid rgba(244, 188, 61, 0.08);
     }
 
     .bubble-slot {
@@ -347,91 +507,96 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.2rem;
+      gap: 0.25rem;
       pointer-events: none;
-      transition: left 0.4s ease, top 0.4s ease;
+      z-index: 1;
+      transition: left 0.45s cubic-bezier(0.4, 0, 0.2, 1), top 0.45s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    .bubble-slot.active { z-index: 4; }
 
     .bubble {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-width: 64px;
-      max-width: 88px;
-      min-height: 64px;
-      padding: 0.4rem 0.5rem;
+      width: var(--bubble-size);
+      height: var(--bubble-size);
+      padding: 0.35rem;
       border-radius: 50%;
-      background: var(--bg-card);
+      background: var(--bg-elevated);
       border: 2px solid var(--border);
       text-align: center;
-      transition: transform 0.35s ease, box-shadow 0.35s ease, opacity 0.35s ease, border-color 0.35s ease;
+      transition: transform 0.35s ease, box-shadow 0.35s ease, opacity 0.35s ease, width 0.35s ease, height 0.35s ease;
     }
 
     .bubble-icon {
-      font-size: 0.85rem;
+      font-size: clamp(0.75rem, 2vw, 0.95rem);
       line-height: 1;
-      margin-bottom: 0.1rem;
-      min-height: 1rem;
+      margin-bottom: 0.15rem;
     }
 
     .bubble-name {
-      font-size: 0.68rem;
+      font-size: clamp(0.62rem, 1.8vw, 0.72rem);
       font-weight: 700;
-      line-height: 1.15;
-      max-width: 76px;
+      line-height: 1.1;
+      max-width: calc(var(--bubble-size) - 12px);
       overflow: hidden;
       text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
-      color: var(--text);
+      word-break: break-word;
     }
 
     .skip-badge {
-      font-size: 0.6rem;
+      font-size: 0.62rem;
       font-weight: 700;
       color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.06);
-      padding: 0.1rem 0.35rem;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0.15rem 0.4rem;
       border-radius: 6px;
+      white-space: nowrap;
     }
 
     .bubble-slot.active .bubble {
-      min-width: 88px;
-      min-height: 88px;
-      max-width: 100px;
+      width: var(--bubble-active);
+      height: var(--bubble-active);
       border-color: var(--accent);
-      background: rgba(245, 185, 66, 0.15);
-      box-shadow: 0 0 24px var(--accent-glow), 0 0 48px rgba(245, 185, 66, 0.2);
-      animation: pulseGlow 1.4s ease-in-out infinite;
-      z-index: 3;
+      background: linear-gradient(160deg, rgba(244, 188, 61, 0.22), rgba(239, 111, 93, 0.1));
+      animation: pulseGlow 1.5s ease-in-out infinite;
     }
 
     .bubble-slot.active .bubble-name {
-      font-size: 0.78rem;
+      font-size: clamp(0.7rem, 2vw, 0.82rem);
       color: var(--accent);
+      max-width: calc(var(--bubble-active) - 14px);
     }
 
     @keyframes pulseGlow {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--accent-glow); }
-      50% { transform: scale(1.06); box-shadow: 0 0 36px var(--accent-glow), 0 0 60px rgba(245, 185, 66, 0.25); }
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 var(--accent-glow), 0 8px 24px rgba(0, 0, 0, 0.3);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 8px rgba(244, 188, 61, 0.15), 0 12px 32px var(--accent-glow);
+      }
     }
 
     .bubble-slot.done .bubble {
-      opacity: 0.55;
-      border-color: var(--success);
+      opacity: 0.5;
+      border-color: rgba(94, 233, 160, 0.45);
     }
 
     .bubble-slot.done .bubble-name { color: var(--success); }
 
     .bubble-slot.skipped-round .bubble {
-      border-color: rgba(139, 149, 173, 0.5);
+      border-color: rgba(145, 155, 181, 0.45);
     }
 
     .bubble-slot.you .bubble {
-      outline: 2px dashed rgba(245, 185, 66, 0.45);
-      outline-offset: 2px;
+      box-shadow: 0 0 0 2px rgba(244, 188, 61, 0.35);
     }
 
     .center-zone {
@@ -441,51 +606,59 @@
       transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
+      align-items: stretch;
+      gap: var(--space-sm);
       z-index: 5;
-      width: min(240px, 78vw);
+      width: min(200px, 52%);
+      max-width: 220px;
     }
 
     .center-zone .btn-shot {
-      width: 100%;
-      min-height: var(--tap);
-      border-radius: var(--radius);
-      font-size: 1rem;
-      background: linear-gradient(145deg, var(--warm) 0%, #c43d2e 100%);
+      background: linear-gradient(145deg, var(--warm) 0%, var(--warm-dim) 100%);
       color: #fff;
-      box-shadow: 0 6px 28px rgba(232, 93, 74, 0.4);
+      box-shadow: 0 8px 28px rgba(239, 111, 93, 0.45);
+      font-size: clamp(0.88rem, 2.5vw, 1rem);
+      line-height: 1.2;
+      padding: var(--space-md) var(--space-sm);
     }
 
     .center-wait {
       text-align: center;
-      padding: 1rem;
+      padding: var(--space-md);
       background: var(--bg-card);
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.9rem;
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
       color: var(--text-muted);
-      width: 100%;
+      line-height: 1.35;
     }
 
-    .center-wait strong { color: var(--accent); display: block; margin-top: 0.25rem; }
+    .center-wait strong {
+      color: var(--accent);
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 1rem;
+    }
 
     .toast-ikaw {
       position: fixed;
-      top: max(1rem, env(safe-area-inset-top));
+      top: calc(var(--safe-top) + var(--space-md));
       left: 50%;
-      transform: translateX(-50%) translateY(-120%);
-      z-index: 200;
-      padding: 0.85rem 1.5rem;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-      color: #1a1208;
-      font-size: 1.35rem;
-      font-weight: 900;
+      transform: translateX(-50%) translateY(-150%);
+      z-index: 300;
+      padding: 0.9rem 1.75rem;
+      font-family: var(--font-display);
+      background: linear-gradient(135deg, var(--accent), #e8a82e);
+      color: #1a1206;
+      font-size: clamp(1.1rem, 4vw, 1.4rem);
+      font-weight: 800;
       border-radius: 999px;
-      box-shadow: 0 8px 40px var(--accent-glow);
-      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 12px 48px var(--accent-glow);
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
       pointer-events: none;
       white-space: nowrap;
+      max-width: calc(100vw - 2rem);
     }
 
     .toast-ikaw.show {
@@ -549,16 +722,34 @@
       margin-bottom: 0.35rem;
     }
 
+    .host-edit {
+      width: 100%;
+      padding: var(--space-md);
+      margin-top: var(--space-sm);
+    }
+
+    .host-edit-title {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: var(--space-sm);
+    }
+
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(7, 11, 20, 0.85);
-      z-index: 150;
+      background: rgba(6, 9, 18, 0.88);
+      z-index: 200;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      padding: 1rem;
+      padding: var(--space-md);
       animation: fadeIn 0.2s ease;
+    }
+
+    @media (min-width: 640px) {
+      .modal-overlay {
+        align-items: center;
+      }
     }
 
     @keyframes fadeIn {
@@ -618,23 +809,19 @@
       align-items: center;
       justify-content: center;
       text-align: center;
+      padding: var(--space-xl) 0;
     }
 
     .ended-box {
-      padding: 2rem 1.5rem;
-      background: var(--bg-card);
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      max-width: 320px;
+      padding: var(--space-xl) var(--space-lg);
+      width: 100%;
+      max-width: 360px;
     }
 
-    .ended-box h2 { font-size: 1.6rem; color: var(--accent); }
-
-    .host-edit {
-      width: 100%;
-      margin-bottom: 0.75rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid var(--border);
+    .ended-box h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 4vw, 1.85rem);
+      color: var(--accent);
     }
 
     .empty-hint {
@@ -644,9 +831,142 @@
     }
 
     .match-hint {
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       color: var(--success);
-      margin: 0.5rem 0;
+      margin: var(--space-sm) 0;
+      padding: var(--space-sm) var(--space-md);
+      background: rgba(94, 233, 160, 0.08);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(94, 233, 160, 0.2);
+    }
+
+    .form-stack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    /* —— Responsive: tablet —— */
+    @media (min-width: 640px) {
+      #app {
+        padding:
+          calc(var(--safe-top) + var(--space-lg))
+          var(--space-lg)
+          calc(var(--safe-bottom) + var(--space-lg));
+      }
+
+      :root {
+        --circle-size: min(72vw, 440px);
+      }
+
+      .modal-sheet {
+        border-radius: var(--radius-lg);
+        max-height: 80dvh;
+      }
+    }
+
+    /* —— Responsive: laptop / desktop —— */
+    @media (min-width: 900px) {
+      :root {
+        --content-max: 100%;
+        --circle-size: min(420px, 52vh);
+        --bubble-size: 68px;
+        --bubble-active: 92px;
+      }
+
+      #app {
+        padding:
+          calc(var(--safe-top) + var(--space-xl))
+          var(--space-xl)
+          calc(var(--safe-bottom) + var(--space-xl));
+      }
+
+      .screen:not(.screen--wide) {
+        max-width: 520px;
+      }
+
+      .tracker-layout {
+        display: grid;
+        grid-template-columns: minmax(260px, 300px) 1fr;
+        grid-template-rows: 1fr auto;
+        gap: var(--space-lg);
+        align-items: start;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .tracker-side {
+        grid-row: 1 / 3;
+        position: sticky;
+        top: 0;
+      }
+
+      .tracker-main {
+        grid-column: 2;
+        min-height: min(520px, 65vh);
+      }
+
+      .tracker-footer-zone {
+        grid-column: 2;
+        max-width: 100%;
+      }
+
+      .host-edit {
+        grid-column: 1 / -1;
+        max-width: 100%;
+      }
+
+      .circle-wrap {
+        padding: var(--space-lg) 0;
+      }
+
+      .center-zone {
+        width: min(240px, 45%);
+      }
+
+      .home-actions {
+        max-width: 400px;
+        margin: 0 auto;
+        width: 100%;
+      }
+    }
+
+    @media (min-width: 1100px) {
+      :root {
+        --circle-size: 460px;
+      }
+    }
+
+    /* Short phones: shrink circle */
+    @media (max-height: 640px) and (max-width: 899px) {
+      :root {
+        --circle-size: min(78vw, 72vh);
+        --tap: 48px;
+      }
+
+      .brand { margin-bottom: var(--space-md); }
+      .brand-mark { width: 44px; height: 44px; font-size: 1.35rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bg-anim::before,
+      .bg-dots,
+      .bubble-slot.active .bubble,
+      .confetti-piece {
+        animation: none !important;
+      }
+
+      .toast-ikaw,
+      .bubble,
+      .bubble-slot {
+        transition: none !important;
+      }
     }
   </style>
 </head>
@@ -809,6 +1129,43 @@
       return state.peekDrinkers.findIndex((d) => d.toLowerCase() === n);
     }
 
+    function circleRadius(count) {
+      if (count <= 4) return 40;
+      if (count <= 6) return 38;
+      if (count <= 8) return 35;
+      return 32;
+    }
+
+    function joinMatchHtml() {
+      const matchIdx = findJoinMatch();
+      const taken = takenIndices();
+      if (!state.peekDrinkers.length || !normalizeName(state.joinPlayerName)) return '';
+      if (matchIdx >= 0) {
+        return taken.has(matchIdx)
+          ? '<p class="error-msg">May naka-claim na sa pangalang ito.</p>'
+          : `<p class="match-hint">✓ Nahanap: ${escapeHtml(state.peekDrinkers[matchIdx])}</p>`;
+      }
+      return '<p class="error-msg">Wala ang pangalan mo sa listahan ng host.</p>';
+    }
+
+    function updateJoinMatchArea() {
+      const el = document.getElementById('join-match-area');
+      const btn = document.getElementById('btn-join-confirm');
+      if (!el) return;
+      el.innerHTML = joinMatchHtml();
+      if (btn) {
+        const matchIdx = findJoinMatch();
+        const taken = takenIndices();
+        const canJoin =
+          state.joinCode.length === 4 &&
+          normalizeName(state.joinPlayerName) &&
+          matchIdx >= 0 &&
+          !taken.has(matchIdx) &&
+          state.connected;
+        btn.disabled = !canJoin;
+      }
+    }
+
     function buildConfettiHtml() {
       let html = '';
       for (let i = 0; i < 36; i++) {
@@ -868,18 +1225,23 @@
 
     function renderHome() {
       return `
-        <header class="setup-header">
-          <h1>Sino Na? 🍺</h1>
-          <p>Real-time inuman tracker</p>
-        </header>
-        <p class="conn-status ${state.connected ? '' : 'offline'}">
-          ${state.connected ? 'Nakakonekta sa server' : 'Kumokonekta...'}
-        </p>
-        <div class="home-actions">
-          <button type="button" class="btn btn-accent" id="btn-host">Gumawa ng inuman (Host)</button>
-          <button type="button" class="btn btn-ghost" id="btn-join-nav">Sumali sa code</button>
-        </div>
-        ${state.joinError ? `<p class="error-msg" style="margin-top:1rem">${escapeHtml(state.joinError)}</p>` : ''}`;
+        <div class="screen">
+          <div class="screen-body">
+            <header class="brand">
+              <div class="brand-mark">🍺</div>
+              <h1>Sino Na?</h1>
+              <p>Real-time inuman tracker para sa barkada</p>
+            </header>
+            <p class="status-pill ${state.connected ? '' : 'offline'}" style="justify-content:center;width:100%">
+              ${state.connected ? 'Handa na ang server' : 'Kumokonekta...'}
+            </p>
+            <div class="home-actions">
+              <button type="button" class="btn btn-accent" id="btn-host">Gumawa ng inuman</button>
+              <button type="button" class="btn btn-ghost" id="btn-join-nav">Sumali sa room code</button>
+            </div>
+            ${state.joinError ? `<p class="error-msg" style="margin-top:var(--space-md)">${escapeHtml(state.joinError)}</p>` : ''}
+          </div>
+        </div>`;
     }
 
     function renderSetup() {
@@ -898,30 +1260,36 @@
         : '<span class="empty-hint">Mag-add ng iba pang kasama</span>';
 
       return `
-        <header class="setup-header">
-          <h1>Sino Na? 🍺</h1>
-          <p>I-setup ang inuman</p>
-        </header>
-        <section class="field-block">
-          <p class="field-label">Pangalan mo?</p>
-          <input type="text" class="text-input" id="host-name-input" placeholder="Ikaw (host)..."
-            value="${escapeHtml(state.hostName)}" maxlength="32" autocomplete="name" />
-        </section>
-        <section class="field-block">
-          <p class="field-label">Iba pang kasama</p>
-          <div class="add-row">
-            <input type="text" id="name-input" placeholder="Pangalan..." maxlength="32" autocomplete="off" />
-            <button type="button" class="btn btn-accent" id="btn-add" style="width:auto">Add</button>
+        <div class="screen">
+          <div class="screen-body">
+            <header class="setup-header">
+              <h1>I-setup ang inuman</h1>
+              <p>Ikaw ang host — idagdag ang mga kasama</p>
+            </header>
+            <div class="form-stack">
+              <div class="form-group card" style="padding:var(--space-md)">
+                <p class="field-label">Pangalan mo?</p>
+                <input type="text" class="text-input" id="host-name-input" placeholder="Ikaw (host)..."
+                  value="${escapeHtml(state.hostName)}" maxlength="32" autocomplete="name" />
+              </div>
+              <div class="form-group card" style="padding:var(--space-md)">
+                <p class="field-label">Iba pang kasama</p>
+                <div class="add-row">
+                  <input type="text" id="name-input" placeholder="Pangalan..." maxlength="32" autocomplete="off" />
+                  <button type="button" class="btn btn-accent btn-inline" id="btn-add">Add</button>
+                </div>
+                <div class="chip-list">${chips}</div>
+              </div>
+            </div>
+            <p class="error-msg">${escapeHtml(state.setupError)}</p>
           </div>
-          <div class="chip-list">${chips}</div>
-        </section>
-        <p class="error-msg">${escapeHtml(state.setupError)}</p>
-        <footer class="setup-footer">
-          <button type="button" class="btn btn-accent" id="btn-start" ${canStart ? '' : 'disabled'}>
-            Simulan na!
-          </button>
-          <button type="button" class="btn btn-ghost" id="btn-back-home">Bumalik</button>
-        </footer>`;
+          <footer class="screen-footer">
+            <button type="button" class="btn btn-accent" id="btn-start" ${canStart ? '' : 'disabled'}>
+              Simulan na!
+            </button>
+            <button type="button" class="btn btn-ghost" id="btn-back-home">Bumalik</button>
+          </footer>
+        </div>`;
     }
 
     function renderJoin() {
@@ -934,37 +1302,36 @@
         !taken.has(matchIdx) &&
         state.connected;
 
-      let matchMsg = '';
-      if (state.peekDrinkers.length && normalizeName(state.joinPlayerName)) {
-        if (matchIdx >= 0) {
-          matchMsg = taken.has(matchIdx)
-            ? '<p class="error-msg">May naka-claim na sa pangalang ito.</p>'
-            : `<p class="match-hint">✓ Nahanap: ${escapeHtml(state.peekDrinkers[matchIdx])}</p>`;
-        } else {
-          matchMsg = '<p class="error-msg">Wala ang pangalan mo sa listahan ng host.</p>';
-        }
-      }
-
       return `
-        <header class="screen-header">
-          <h1>Sumali</h1>
-          <p>Ilagay ang room code at pangalan mo</p>
-        </header>
-        <p class="field-label">Room code</p>
-        <input type="text" class="code-input" id="join-code" maxlength="4"
-          placeholder="B7KQ" value="${escapeHtml(state.joinCode)}" autocomplete="off" />
-        <button type="button" class="btn btn-ghost" id="btn-peek" style="margin:0.75rem 0">Hanapin ang room</button>
-        <p class="field-label">Pangalan mo?</p>
-        <input type="text" class="text-input" id="join-name" placeholder="Dapat nasa listahan ng host..."
-          value="${escapeHtml(state.joinPlayerName)}" maxlength="32" autocomplete="name" />
-        ${matchMsg}
-        <p class="error-msg">${escapeHtml(state.joinError)}</p>
-        <footer class="setup-footer">
-          <button type="button" class="btn btn-accent" id="btn-join-confirm" ${canJoin ? '' : 'disabled'}>
-            Sumali na!
-          </button>
-          <button type="button" class="btn btn-ghost" id="btn-back-home">Bumalik</button>
-        </footer>`;
+        <div class="screen">
+          <div class="screen-body">
+            <header class="screen-header">
+              <h1>Sumali sa inuman</h1>
+              <p>Room code at pangalan — dapat nasa listahan ng host</p>
+            </header>
+            <div class="form-stack">
+              <div class="form-group card" style="padding:var(--space-md)">
+                <p class="field-label">Room code</p>
+                <input type="text" class="code-input" id="join-code" maxlength="4" inputmode="text"
+                  placeholder="B7KQ" value="${escapeHtml(state.joinCode)}" autocomplete="off" />
+                <button type="button" class="btn btn-ghost" id="btn-peek" style="margin-top:var(--space-sm)">Hanapin ang room</button>
+              </div>
+              <div class="form-group card" style="padding:var(--space-md)">
+                <p class="field-label">Pangalan mo?</p>
+                <input type="text" class="text-input" id="join-name" placeholder="Tulad ng binigay ng host..."
+                  value="${escapeHtml(state.joinPlayerName)}" maxlength="32" autocomplete="name" />
+                <div id="join-match-area">${joinMatchHtml()}</div>
+              </div>
+            </div>
+            <p class="error-msg">${escapeHtml(state.joinError)}</p>
+          </div>
+          <footer class="screen-footer">
+            <button type="button" class="btn btn-accent" id="btn-join-confirm" ${canJoin ? '' : 'disabled'}>
+              Sumali na!
+            </button>
+            <button type="button" class="btn btn-ghost" id="btn-back-home">Bumalik</button>
+          </footer>
+        </div>`;
     }
 
     function renderScoreboardModal() {
@@ -996,7 +1363,7 @@
               Kabuuang inom at skip ng session
             </p>
             ${rows}
-            <button type="button" class="btn btn-ghost" id="btn-close-score" style="margin-top:1rem">Isara</button>
+            <button type="button" class="btn btn-ghost" id="btn-close-score" style="margin-top:var(--space-md)">Isara</button>
           </div>
         </div>`;
     }
@@ -1004,7 +1371,7 @@
     function renderTracker() {
       const total = state.drinkers.length;
       const done = state.drunkThisRound.length;
-      const radius = 38;
+      const radius = circleRadius(total);
 
       const slots = state.drinkers
         .map((name, i) => {
@@ -1070,11 +1437,11 @@
       const hostEdit =
         state.role === 'host'
           ? `
-        <section class="host-edit">
-          <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem">Host: dagdag/alis (hindi ang sarili mo)</p>
+        <section class="host-edit card">
+          <p class="host-edit-title">Host: dagdag o alis ng kasama (hindi ikaw)</p>
           <div class="add-row">
             <input type="text" id="host-add-input" placeholder="Magdagdag..." maxlength="32" />
-            <button type="button" class="btn btn-accent" id="btn-host-add" style="width:auto">Add</button>
+            <button type="button" class="btn btn-accent btn-inline" id="btn-host-add">Add</button>
           </div>
           <div class="chip-list">
             ${state.drinkers
@@ -1104,48 +1471,61 @@
         : '';
 
       return `
-        <div class="tracker-screen">
-          <div class="room-code-banner">
-            <div class="label">Room code</div>
-            <div class="code">${escapeHtml(state.code || '')}</div>
-            ${state.role === 'host' ? '<span class="role-badge">Host · kasama sa bilog</span>' : '<span class="role-badge">Player</span>'}
-          </div>
-          <p class="conn-status ${state.connected ? '' : 'offline'}">
-            ${state.connected ? '● Live' : 'Nagre-reconnect...'}
-          </p>
-          <p class="round-bar-promo">
-            🍺 <span class="hl">Round ${state.round}</span> · ${done}/${total} nakainom na
-          </p>
-          <div class="tracker-toolbar">
-            <button type="button" class="btn btn-ghost" id="btn-scoreboard">📊 Scoreboard</button>
-          </div>
-          <div class="circle-stage">
-            <div class="circle-guide"></div>
-            ${slots}
-            <div class="center-zone">${centerActions}</div>
+        <div class="screen screen--wide">
+          <div class="screen-body">
+            <div class="tracker-layout">
+              <aside class="tracker-side">
+                <div class="room-code-banner card">
+                  <div class="label">Room code — i-share</div>
+                  <div class="code">${escapeHtml(state.code || '')}</div>
+                  ${state.role === 'host' ? '<span class="role-badge">Host · nasa bilog</span>' : '<span class="role-badge">Player</span>'}
+                </div>
+                <p class="status-pill ${state.connected ? '' : 'offline'}">
+                  ${state.connected ? 'Live sync' : 'Nagre-reconnect...'}
+                </p>
+                <p class="round-bar-promo card">
+                  🍺 <span class="hl">Round ${state.round}</span> · ${done}/${total} nakainom na
+                </p>
+                <div class="tracker-toolbar">
+                  <button type="button" class="btn btn-ghost" id="btn-scoreboard">📊 Scoreboard</button>
+                </div>
+              </aside>
+              <main class="tracker-main">
+                <div class="circle-wrap">
+                  <div class="circle-stage">
+                    <div class="circle-guide"></div>
+                    ${slots}
+                    <div class="center-zone">${centerActions}</div>
+                  </div>
+                </div>
+              </main>
+              ${hostEdit}
+              <div class="tracker-footer-zone screen-footer" style="padding-top:0">
+                ${
+                  state.role === 'host'
+                    ? `<button type="button" class="btn btn-danger" id="btn-end">Tapusin ang inuman</button>
+                       <button type="button" class="btn btn-ghost" id="btn-leave-host">Umalis</button>`
+                    : `<button type="button" class="btn btn-ghost" id="btn-leave-player">Umalis sa room</button>`
+                }
+              </div>
+            </div>
           </div>
           ${celebration}
-          ${hostEdit}
-          <footer class="tracker-footer">
-            ${
-              state.role === 'host'
-                ? `<button type="button" class="btn btn-danger" id="btn-end">Tapusin ang inuman</button>
-                   <button type="button" class="btn btn-ghost" id="btn-leave-host">Umalis</button>`
-                : `<button type="button" class="btn btn-ghost" id="btn-leave-player">Umalis sa room</button>`
-            }
-          </footer>
         </div>
         ${renderScoreboardModal()}`;
     }
 
     function renderEnded() {
       return `
-        <div class="ended-screen">
-          <div class="ended-box">
-            <h2>Tapos na ang inuman 👋</h2>
-            <p style="color:var(--text-muted);margin-top:0.5rem">Salamat sa pag-inom responsibly!</p>
+        <div class="screen">
+          <div class="screen-body ended-screen">
+            <div class="ended-box card">
+              <div class="brand-mark" style="margin:0 auto var(--space-md)">👋</div>
+              <h2>Tapos na ang inuman</h2>
+              <p style="color:var(--text-muted);margin-top:var(--space-sm)">Salamat sa pag-inom responsibly!</p>
+            </div>
           </div>
-          <footer class="setup-footer" style="width:100%">
+          <footer class="screen-footer">
             <button type="button" class="btn btn-accent" id="btn-home-ended">Bumalik sa home</button>
           </footer>
         </div>`;
@@ -1246,7 +1626,7 @@
 
       $('#join-name')?.addEventListener('input', (e) => {
         state.joinPlayerName = e.target.value;
-        render();
+        updateJoinMatchArea();
       });
 
       $('#btn-peek')?.addEventListener('click', () => {
