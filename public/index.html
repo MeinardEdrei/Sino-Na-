@@ -155,6 +155,9 @@
       padding-bottom: calc(var(--safe-bottom) + var(--space-xs));
       background: linear-gradient(to top, var(--bg) 85%, transparent);
       border-top: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
     }
 
     .screen-body {
@@ -333,6 +336,7 @@
       flex-direction: column;
       gap: var(--space-sm);
       flex-shrink: 0;
+      order: 1;
     }
 
     .tracker-main {
@@ -343,7 +347,10 @@
       justify-content: flex-start;
       min-height: 0;
       width: 100%;
+      order: 0;
     }
+
+    .host-edit { order: 2; }
 
     .tracker-toolbar .btn {
       min-height: 44px;
@@ -949,6 +956,34 @@
       gap: var(--space-xs);
     }
 
+    .mobile-info-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+      width: 100%;
+      padding: var(--space-xs) 0 var(--space-sm);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .mobile-info-code {
+      font-family: var(--font-display);
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      font-size: 1rem;
+    }
+
+    .mobile-info-role {
+      color: var(--success);
+    }
+
+    @media (min-width: 900px) {
+      .mobile-info-strip { display: none; }
+    }
+
     /* —— Responsive: tablet —— */
     @media (min-width: 640px) {
       #app {
@@ -1002,13 +1037,17 @@
         grid-row: 1 / 3;
         position: sticky;
         top: 0;
+        order: 0;
       }
 
       .tracker-main {
         grid-column: 2;
         min-height: 0;
         justify-content: center;
+        order: 0;
       }
+
+      .host-edit { order: 0; }
 
       .host-edit {
         grid-column: 1 / -1;
@@ -1057,6 +1096,18 @@
         gap: var(--space-xs);
       }
       .btn { min-height: 44px; }
+      .tanggero-panel { display: none; }
+      .round-bar-promo { padding: var(--space-sm); font-size: 0.9rem; }
+    }
+
+    /* Very small phones (320px wide) */
+    @media (max-width: 360px) {
+      :root {
+        --space-md: 0.75rem;
+        --space-lg: 1.1rem;
+        --tap: 48px;
+      }
+      .room-code-banner .code { font-size: 1.5rem; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1762,6 +1813,11 @@
                 ${tanggeroTransfer}
               </aside>
               <main class="tracker-main">
+                <div class="mobile-info-strip">
+                  <span class="mobile-info-code">${escapeHtml(state.code || '')}</span>
+                  <span class="mobile-info-round">Round ${state.round} · ${done}/${total}</span>
+                  ${isTanggero() ? '<span class="mobile-info-role">🍺 Tanggero</span>' : ''}
+                </div>
                 <div class="circle-wrap">
                   <div class="circle-stage">
                     <div class="circle-guide"></div>
