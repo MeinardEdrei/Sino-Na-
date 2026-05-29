@@ -1044,10 +1044,19 @@
         --bubble-active: clamp(62px, 15vw, 78px);
         --tap: 48px;
       }
-
-      .brand { margin-bottom: var(--space-md); }
+      .brand { display: none; }
       .brand-mark { width: 44px; height: 44px; font-size: 1.35rem; }
       .notif-card { display: none; }
+      .setup-header,
+      .screen-header { margin-bottom: var(--space-sm); }
+      .setup-header h1,
+      .screen-header h1 { font-size: 1.5rem; }
+      .form-stack { gap: var(--space-sm); }
+      .screen-footer {
+        padding-top: var(--space-sm);
+        gap: var(--space-xs);
+      }
+      .btn { min-height: 44px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
